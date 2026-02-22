@@ -331,30 +331,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return DIFFICULTY_CONFIG[diff];
   }, [state.effectiveDifficulty, state.difficulty]);
 
-  const selectMode = useCallback((mode: GameMode) => {
-    haptic('light');
-    if (mode === 'daily') {
-      if (state.dailyHardUnlocked) {
-        setState(prev => ({ ...prev, gameMode: mode }));
-        return;
-      }
-      const todayKey = getTodayKey();
-      const dailyKey = `${todayKey}_medium`;
-      if (state.dailyPlayed[dailyKey]) {
-        setState(prev => ({
-          ...prev,
-          gameMode: mode,
-          toastMessage: 'Already played today! Come back tomorrow.',
-          toastType: 'info',
-        }));
-        return;
-      }
-      loadSave().then(save => startGame('medium', mode, save));
-      return;
-    }
-    setState(prev => ({ ...prev, gameMode: mode }));
-  }, [state.dailyPlayed, state.dailyHardUnlocked, startGame]);
-
   const startGame = useCallback((difficulty: Difficulty, mode: GameMode, save: SaveData) => {
     let effectiveDiff = difficulty;
     let hiddenReduction = false;
@@ -408,6 +384,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
       endlessWinStreak: save.endlessWinStreak,
     }));
   }, []);
+
+  const selectMode = useCallback((mode: GameMode) => {
+    haptic('light');
+    if (mode === 'daily') {
+      if (state.dailyHardUnlocked) {
+        setState(prev => ({ ...prev, gameMode: mode }));
+        return;
+      }
+      const todayKey = getTodayKey();
+      const dailyKey = `${todayKey}_medium`;
+      if (state.dailyPlayed[dailyKey]) {
+        setState(prev => ({
+          ...prev,
+          gameMode: mode,
+          toastMessage: 'Already played today! Come back tomorrow.',
+          toastType: 'info',
+        }));
+        return;
+      }
+      loadSave().then(save => startGame('medium', mode, save));
+      return;
+    }
+    setState(prev => ({ ...prev, gameMode: mode }));
+  }, [state.dailyPlayed, state.dailyHardUnlocked, startGame]);
 
   const selectDifficulty = useCallback((d: Difficulty) => {
     haptic('medium');
