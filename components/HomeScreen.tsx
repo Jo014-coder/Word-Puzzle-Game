@@ -120,7 +120,7 @@ function DifficultyButton({ difficulty, onPress, delay }: {
 }
 
 export default function HomeScreen() {
-  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed } = useGame();
+  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked } = useGame();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === 'web' ? 67 : 0;
 
@@ -154,7 +154,7 @@ export default function HomeScreen() {
           mode="daily"
           icon="calendar-today"
           label="Daily Challenge"
-          description="Same code for everyone. One try per day."
+          description={dailyHardUnlocked ? "Medium or Hard. One try per day." : "Medium difficulty. One try per day."}
           selected={gameMode === 'daily'}
           onPress={() => selectMode('daily')}
           delay={100}
@@ -163,7 +163,7 @@ export default function HomeScreen() {
           mode="endless"
           icon="infinity"
           label="Endless Mode"
-          description="Infinite games. Build your streak."
+          description="Practice and train. Build your streak."
           selected={gameMode === 'endless'}
           onPress={() => selectMode('endless')}
           delay={200}
@@ -179,7 +179,17 @@ export default function HomeScreen() {
         />
       </View>
 
-      {gameMode && (
+      {gameMode === 'daily' && dailyHardUnlocked && (
+        <View style={styles.diffSection}>
+          <Text style={styles.sectionLabel}>DAILY DIFFICULTY</Text>
+          <View style={styles.diffRow}>
+            <DifficultyButton difficulty="medium" onPress={() => selectDifficulty('medium')} delay={100} />
+            <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={200} />
+          </View>
+        </View>
+      )}
+
+      {gameMode && gameMode !== 'daily' && (
         <View style={styles.diffSection}>
           <Text style={styles.sectionLabel}>DIFFICULTY</Text>
           <View style={styles.diffRow}>

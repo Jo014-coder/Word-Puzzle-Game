@@ -29,6 +29,8 @@ interface SaveData {
   goldPegsUnlocked: boolean;
   obsidianTheme: boolean;
   endlessWinStreak: number;
+  dailyHardUnlocked: boolean;
+  timeAttackLosses: number;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -44,6 +46,8 @@ const DEFAULT_SAVE: SaveData = {
   goldPegsUnlocked: false,
   obsidianTheme: false,
   endlessWinStreak: 0,
+  dailyHardUnlocked: false,
+  timeAttackLosses: 0,
 };
 
 export type Screen = 'home' | 'game' | 'result';
@@ -84,6 +88,9 @@ export interface GameState {
   dailyPlayed: Record<string, boolean>;
   lastPlayedDate: string;
   dailyLoginClaimed: boolean;
+  dailyHardUnlocked: boolean;
+  timeAttackLosses: number;
+  timeAttackNextRows: GuessRow[] | null;
 }
 
 interface GameContextValue extends GameState {
@@ -252,6 +259,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dailyPlayed: {},
     lastPlayedDate: '',
     dailyLoginClaimed: false,
+    dailyHardUnlocked: false,
+    timeAttackLosses: 0,
+    timeAttackNextRows: null,
   });
 
   useEffect(() => {
@@ -273,6 +283,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dailyPlayed: save.dailyPlayed || {},
         lastPlayedDate: save.lastPlayedDate,
         dailyLoginClaimed: claimedToday,
+        dailyHardUnlocked: save.dailyHardUnlocked || false,
+        timeAttackLosses: save.timeAttackLosses || 0,
       }));
 
       if (!claimedToday) {
@@ -321,14 +333,35 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const selectMode = useCallback((mode: GameMode) => {
     haptic('light');
+    if (mode === 'daily') {
+      if (state.dailyHardUnlocked) {
+        setState(prev => ({ ...prev, gameMode: mode }));
+        return;
+      }
+      const todayKey = getTodayKey();
+      const dailyKey = `${todayKey}_medium`;
+      if (state.dailyPlayed[dailyKey]) {
+        setState(prev => ({
+          ...prev,
+          gameMode: mode,
+          toastMessage: 'Already played today! Come back tomorrow.',
+          toastType: 'info',
+        }));
+        return;
+      }
+      loadSave().then(save => startGame('medium', mode, save));
+      return;
+    }
     setState(prev => ({ ...prev, gameMode: mode }));
-  }, []);
+  }, [state.dailyPlayed, state.dailyHardUnlocked, startGame]);
 
   const startGame = useCallback((difficulty: Difficulty, mode: GameMode, save: SaveData) => {
     let effectiveDiff = difficulty;
     let hiddenReduction = false;
 
-    if (save.consecutiveLosses >= 3 && difficulty !== 'easy') {
+    const lossThreshold = mode === 'timeAttack' ? 2 : 3;
+    const losses = mode === 'timeAttack' ? (save.timeAttackLosses || 0) : save.consecutiveLosses;
+    if (losses >= lossThreshold && difficulty !== 'easy') {
       const idx = DIFFICULTY_ORDER.indexOf(difficulty);
       effectiveDiff = DIFFICULTY_ORDER[Math.max(0, idx - 1)];
       hiddenReduction = true;
@@ -464,10 +497,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         let newGold = prev.goldPegsUnlocked;
         let newObsidian = prev.obsidianTheme;
 
+        let newDailyHard = prev.dailyHardUnlocked;
         if (newStreak === 3) { bonusCoins = 50; milestoneMsg = 'Streak 3 bonus: +50 coins!'; }
         else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
         else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
-        else if (newStreak === 10) { newShield = true; milestoneMsg = 'Streak 10: Streak Shield unlocked!'; }
+        else if (newStreak === 10) { newShield = true; newDailyHard = true; milestoneMsg = 'Streak 10: Shield + Daily Hard mode unlocked!'; }
         else if (newStreak === 15) { newObsidian = true; milestoneMsg = 'Streak 15: Obsidian theme unlocked!'; }
 
         const isTimeAttack = prev.gameMode === 'timeAttack';
@@ -500,7 +534,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: newGamesWon,
           consecutiveLosses: 0, goldPegsUnlocked: newGold, obsidianTheme: newObsidian,
           endlessWinStreak: newEndlessWinStreak, dailyPlayed: newDailyPlayed,
-          lastPlayedDate: getTodayKey(),
+          lastPlayedDate: getTodayKey(), dailyHardUnlocked: newDailyHard,
+          timeAttackLosses: 0,
         };
         persistSave(saveData);
 
@@ -538,6 +573,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
             currentRow: 0,
             selectedSlot: 0,
             dailyPlayed: newDailyPlayed,
+            timeAttackLosses: 0,
+            timeAttackNextRows: newEmptyRows,
+            dailyHardUnlocked: newDailyHard,
           };
         }
 
@@ -563,6 +601,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           endlessWinStreak: newEndlessWinStreak,
           endlessAutoLevelUp: endlessLevelUp,
           dailyPlayed: newDailyPlayed,
+          dailyHardUnlocked: newDailyHard,
         };
       }
 
@@ -598,6 +637,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
         if (prev.gameMode === 'timeAttack') {
           if (timerRef.current) clearInterval(timerRef.current);
+          const newTimeAttackLosses = prev.timeAttackLosses + 1;
+          persistSave({ timeAttackLosses: newTimeAttackLosses });
           return {
             ...prev,
             rows: newRows,
@@ -613,6 +654,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             toastType: 'info' as const,
             dailyPlayed: newDailyPlayed,
             endlessWinStreak: 0,
+            timeAttackLosses: newTimeAttackLosses,
           };
         }
 
@@ -731,7 +773,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const clearToast = useCallback(() => setState(prev => ({ ...prev, toastMessage: null })), []);
   const clearShake = useCallback(() => setState(prev => ({ ...prev, shakeRow: null })), []);
-  const finishReveal = useCallback(() => setState(prev => ({ ...prev, revealingRow: null })), []);
+  const finishReveal = useCallback(() => setState(prev => {
+    if (prev.timeAttackNextRows) {
+      return { ...prev, revealingRow: null, rows: prev.timeAttackNextRows, timeAttackNextRows: null };
+    }
+    return { ...prev, revealingRow: null };
+  }), []);
 
   const value = useMemo(() => ({
     ...state,
