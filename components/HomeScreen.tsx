@@ -154,7 +154,7 @@ export default function HomeScreen() {
           mode="daily"
           icon="calendar-today"
           label="Daily Challenge"
-          description={dailyHardUnlocked ? "Medium or Hard. One try per day." : "Medium difficulty. One try per day."}
+          description={dailyHardUnlocked ? "Choose your challenge. One try per day." : "One try per day. Can you crack it?"}
           selected={gameMode === 'daily'}
           onPress={() => selectMode('daily')}
           delay={100}
