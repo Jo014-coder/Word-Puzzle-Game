@@ -8,15 +8,11 @@ export interface PegSlot {
   colorIndex: number | null;
 }
 
-export interface Feedback {
-  exact: number;
-  misplaced: number;
-  wrong: number;
-}
+export type FeedbackPeg = 'green' | 'yellow' | 'grey';
 
 export interface GuessRow {
   pegs: PegSlot[];
-  feedback: Feedback | null;
+  feedback: FeedbackPeg[] | null;
   submitted: boolean;
 }
 
@@ -148,45 +144,38 @@ function generateCode(config: typeof DIFFICULTY_CONFIG.easy, daily: boolean = fa
   return code;
 }
 
-function computeFeedback(guess: number[], secret: number[], hasFakeFeedback: boolean, alreadyUsedFake: boolean): { feedback: Feedback; fakeUsed: boolean } {
-  let exact = 0;
-  const secretPool: (number | null)[] = [...secret];
-  const guessPool: (number | null)[] = [...guess];
+function computeFeedback(guess: number[], secret: number[], hasFakeFeedback: boolean, alreadyUsedFake: boolean): { feedback: FeedbackPeg[]; fakeUsed: boolean } {
+  const result: FeedbackPeg[] = new Array(guess.length).fill('grey');
+  const secretPool = [...secret] as (number | null)[];
+  const guessPool = [...guess] as (number | null)[];
 
   for (let i = 0; i < guess.length; i++) {
     if (guess[i] === secret[i]) {
-      exact++;
+      result[i] = 'green';
       secretPool[i] = null;
       guessPool[i] = null;
     }
   }
 
-  let misplaced = 0;
-  for (let i = 0; i < guessPool.length; i++) {
+  for (let i = 0; i < guess.length; i++) {
     if (guessPool[i] === null) continue;
-    const idx = secretPool.indexOf(guessPool[i]!);
-    if (idx !== -1) {
-      misplaced++;
-      secretPool[idx] = null;
+    const j = secretPool.indexOf(guessPool[i]!);
+    if (j !== -1) {
+      result[i] = 'yellow';
+      secretPool[j] = null;
     }
   }
 
-  let displayExact = exact;
-  let displayMisplaced = misplaced;
   let fakeUsed = false;
+  const greenIndices = result.reduce<number[]>((acc, v, i) => { if (v === 'green') acc.push(i); return acc; }, []);
 
-  if (hasFakeFeedback && !alreadyUsedFake && exact >= 1) {
-    displayExact = exact - 1;
-    displayMisplaced = misplaced + 1;
+  if (hasFakeFeedback && !alreadyUsedFake && greenIndices.length >= 1) {
+    const fakeIdx = greenIndices[Math.floor(Math.random() * greenIndices.length)];
+    result[fakeIdx] = 'yellow';
     fakeUsed = true;
   }
 
-  const wrong = guess.length - displayExact - displayMisplaced;
-
-  return {
-    feedback: { exact: displayExact, misplaced: displayMisplaced, wrong },
-    fakeUsed,
-  };
+  return { feedback: result, fakeUsed };
 }
 
 function createEmptyRows(config: typeof DIFFICULTY_CONFIG.easy): GuessRow[] {
@@ -650,7 +639,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       let nearMissMsg: string | null = null;
       const wrongCount = config.codeLength - realExact;
       if (wrongCount === 1) nearMissMsg = 'So close!';
-      else if (wrongCount === 2 && feedback.misplaced >= 1) nearMissMsg = 'Almost there!';
+      else if (wrongCount === 2 && feedback.some(f => f === 'yellow')) nearMissMsg = 'Almost there!';
 
       return {
         ...prev,

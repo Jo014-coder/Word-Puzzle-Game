@@ -7,7 +7,13 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import Colors from '@/constants/colors';
-import { Feedback } from '@/contexts/GameContext';
+import { FeedbackPeg } from '@/contexts/GameContext';
+
+const PEG_COLOR_MAP: Record<FeedbackPeg, string> = {
+  green: Colors.correctPeg,
+  yellow: Colors.misplacedPeg,
+  grey: Colors.wrongPeg,
+};
 
 function FeedbackPin({ color, index, pinSize, animated }: { color: string; index: number; pinSize: number; animated: boolean }) {
   const scale = useSharedValue(animated ? 0 : 1);
@@ -39,18 +45,18 @@ function FeedbackPin({ color, index, pinSize, animated }: { color: string; index
 }
 
 interface FeedbackPinsProps {
-  feedback: Feedback;
-  total: number;
+  feedback: FeedbackPeg[];
   pinSize?: number;
   animated?: boolean;
 }
 
-export default function FeedbackPins({ feedback, total, pinSize = 10, animated = false }: FeedbackPinsProps) {
-  const pinColors: string[] = [];
-  for (let i = 0; i < feedback.exact; i++) pinColors.push(Colors.correctPeg);
-  for (let i = 0; i < feedback.misplaced; i++) pinColors.push(Colors.misplacedPeg);
-  for (let i = 0; i < feedback.wrong; i++) pinColors.push(Colors.wrongPeg);
+export default function FeedbackPins({ feedback, pinSize = 10, animated = false }: FeedbackPinsProps) {
+  const sorted = [...feedback].sort((a, b) => {
+    const order: Record<FeedbackPeg, number> = { green: 0, yellow: 1, grey: 2 };
+    return order[a] - order[b];
+  });
 
+  const total = sorted.length;
   const cols = Math.ceil(total / 2);
 
   return (
@@ -63,7 +69,7 @@ export default function FeedbackPins({ feedback, total, pinSize = 10, animated =
             return (
               <FeedbackPin
                 key={colIdx}
-                color={pinColors[idx] || Colors.wrongPeg}
+                color={PEG_COLOR_MAP[sorted[idx]]}
                 index={idx}
                 pinSize={pinSize}
                 animated={animated}

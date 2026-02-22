@@ -14,7 +14,6 @@ import ColorPeg from './ColorPeg';
 import FeedbackPins from './FeedbackPins';
 import Colors from '@/constants/colors';
 import { GuessRow, useGame } from '@/contexts/GameContext';
-import { DIFFICULTY_CONFIG } from '@/constants/game';
 
 interface GuessRowViewProps {
   row: GuessRow;
@@ -124,7 +123,6 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
         {row.feedback ? (
           <FeedbackPins
             feedback={row.feedback}
-            total={codeLength}
             pinSize={Math.max(8, pegSize * 0.24)}
             animated={isRevealing}
           />
@@ -140,6 +138,7 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 12,
     paddingVertical: 6,
     marginVertical: 2,

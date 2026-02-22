@@ -122,6 +122,9 @@ function ColorPalette() {
           <Pressable
             key={i}
             onPress={() => selectColor(i)}
+            testID={`palette-color-${i}`}
+            accessibilityRole="button"
+            accessibilityLabel={`Color ${i}`}
             style={({ pressed }) => [
               styles.paletteButton,
               { opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.9 : 1 }] },
@@ -132,11 +135,11 @@ function ColorPalette() {
         ))}
       </View>
       <View style={styles.actionRow}>
-        <Pressable onPress={clearSlot} style={({ pressed }) => [styles.actionButton, styles.deleteButton, { opacity: pressed ? 0.7 : 1 }]}>
+        <Pressable onPress={clearSlot} testID="clear-button" accessibilityRole="button" accessibilityLabel="Clear" style={({ pressed }) => [styles.actionButton, styles.deleteButton, { opacity: pressed ? 0.7 : 1 }]}>
           <Ionicons name="backspace-outline" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Clear</Text>
         </Pressable>
-        <Pressable onPress={submitGuess} style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : 1 }]}>
+        <Pressable onPress={submitGuess} testID="submit-button" accessibilityRole="button" accessibilityLabel="Submit" style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : 1 }]}>
           <Ionicons name="checkmark-circle" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Submit</Text>
         </Pressable>
