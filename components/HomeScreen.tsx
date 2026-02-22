@@ -120,9 +120,14 @@ function DifficultyButton({ difficulty, onPress, delay }: {
 }
 
 export default function HomeScreen() {
-  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked } = useGame();
+  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame } = useGame();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === 'web' ? 67 : 0;
+
+  const today = new Date();
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dailyAlreadyPlayed = !!(dailyPlayed[`${todayKey}_medium`] || dailyPlayed[`${todayKey}_hard`]);
+  const hasDailyResult = !!(lastDailyGame && lastDailyGame.date === todayKey);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTop + 16 }]}>
@@ -154,7 +159,7 @@ export default function HomeScreen() {
           mode="daily"
           icon="calendar-today"
           label="Daily Challenge"
-          description={dailyHardUnlocked ? "Choose your challenge. One try per day." : "One try per day. Can you crack it?"}
+          description={dailyAlreadyPlayed ? "Played! Tap to view your result." : dailyHardUnlocked ? "Choose your challenge. One try per day." : "One try per day. Can you crack it?"}
           selected={gameMode === 'daily'}
           onPress={() => selectMode('daily')}
           delay={100}

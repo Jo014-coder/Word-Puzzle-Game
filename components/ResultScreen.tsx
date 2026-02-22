@@ -76,7 +76,7 @@ export default function ResultScreen() {
     phase, secretCode, coinsEarned, streak, coins, playAgain, backToMenu,
     showConfetti, toastMessage, toastType, clearToast, currentRow,
     effectiveDifficulty, difficulty, gameMode, timeAttackScore, timeAttackCoins,
-    endlessAutoLevelUp,
+    endlessAutoLevelUp, shareDaily, viewingDaily,
   } = useGame();
   const insets = useSafeAreaInsets();
   const diff = effectiveDifficulty || difficulty || 'easy';
@@ -163,16 +163,19 @@ export default function ResultScreen() {
         <View style={styles.buttonsRow}>
           {gameMode === 'daily' ? (
             <>
-              <View style={[styles.primaryButton, { backgroundColor: 'rgba(255,255,255,0.08)' }]}>
-                <Ionicons name="time-outline" size={20} color={Colors.textSecondary} />
-                <Text style={[styles.primaryButtonText, { color: Colors.textSecondary }]}>More tomorrow</Text>
-              </View>
+              <Pressable
+                onPress={shareDaily}
+                style={({ pressed }) => [styles.primaryButton, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="share-social" size={20} color={Colors.textPrimary} />
+                <Text style={styles.primaryButtonText}>Share</Text>
+              </Pressable>
               <Pressable
                 onPress={backToMenu}
                 style={({ pressed }) => [styles.secondaryButton, { opacity: pressed ? 0.8 : 1 }]}
               >
-                <Ionicons name="game-controller-outline" size={18} color={Colors.textSecondary} />
-                <Text style={styles.secondaryButtonText}>Try Other Modes</Text>
+                <Ionicons name="grid-outline" size={18} color={Colors.textSecondary} />
+                <Text style={styles.secondaryButtonText}>Back to Menu</Text>
               </Pressable>
             </>
           ) : (
@@ -189,7 +192,7 @@ export default function ResultScreen() {
                 style={({ pressed }) => [styles.secondaryButton, { opacity: pressed ? 0.8 : 1 }]}
               >
                 <Ionicons name="grid-outline" size={18} color={Colors.textSecondary} />
-                <Text style={styles.secondaryButtonText}>Change Mode</Text>
+                <Text style={styles.secondaryButtonText}>Back to Menu</Text>
               </Pressable>
             </>
           )}

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
+import { Platform, Share } from 'react-native';
 import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS } from '@/constants/game';
 
 export interface PegSlot {
@@ -14,6 +14,15 @@ export interface GuessRow {
   pegs: PegSlot[];
   feedback: FeedbackPeg[] | null;
   submitted: boolean;
+}
+
+interface DailyGameResult {
+  rows: GuessRow[];
+  phase: 'won' | 'lost';
+  difficulty: string;
+  currentRow: number;
+  secretCode: number[];
+  date: string;
 }
 
 interface SaveData {
@@ -31,6 +40,7 @@ interface SaveData {
   endlessWinStreak: number;
   dailyHardUnlocked: boolean;
   timeAttackLosses: number;
+  lastDailyGame: DailyGameResult | null;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -48,6 +58,7 @@ const DEFAULT_SAVE: SaveData = {
   endlessWinStreak: 0,
   dailyHardUnlocked: false,
   timeAttackLosses: 0,
+  lastDailyGame: null,
 };
 
 export type Screen = 'home' | 'game' | 'result';
@@ -91,6 +102,8 @@ export interface GameState {
   dailyHardUnlocked: boolean;
   timeAttackLosses: number;
   timeAttackNextRows: GuessRow[] | null;
+  lastDailyGame: DailyGameResult | null;
+  viewingDaily: boolean;
 }
 
 interface GameContextValue extends GameState {
@@ -107,6 +120,8 @@ interface GameContextValue extends GameState {
   clearShake: () => void;
   finishReveal: () => void;
   getConfig: () => typeof DIFFICULTY_CONFIG.easy;
+  shareDaily: () => void;
+  viewLastDaily: () => void;
 }
 
 const STORAGE_KEY = 'griddl_v2_save';
@@ -262,6 +277,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     dailyHardUnlocked: false,
     timeAttackLosses: 0,
     timeAttackNextRows: null,
+    lastDailyGame: null,
+    viewingDaily: false,
   });
 
   useEffect(() => {
@@ -285,6 +302,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dailyLoginClaimed: claimedToday,
         dailyHardUnlocked: save.dailyHardUnlocked || false,
         timeAttackLosses: save.timeAttackLosses || 0,
+        lastDailyGame: save.lastDailyGame || null,
       }));
 
       if (!claimedToday) {
@@ -388,13 +406,36 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const selectMode = useCallback((mode: GameMode) => {
     haptic('light');
     if (mode === 'daily') {
+      const todayKey = getTodayKey();
+      const hasPlayedMedium = state.dailyPlayed[`${todayKey}_medium`];
+      const hasPlayedHard = state.dailyPlayed[`${todayKey}_hard`];
+      const hasPlayed = hasPlayedMedium || hasPlayedHard;
+
+      if (hasPlayed && state.lastDailyGame && state.lastDailyGame.date === todayKey) {
+        const dg = state.lastDailyGame;
+        const config = DIFFICULTY_CONFIG[dg.difficulty as Difficulty];
+        setState(prev => ({
+          ...prev,
+          screen: 'result',
+          gameMode: 'daily',
+          difficulty: dg.difficulty as Difficulty,
+          effectiveDifficulty: dg.difficulty as Difficulty,
+          phase: dg.phase,
+          rows: dg.rows,
+          currentRow: dg.currentRow,
+          secretCode: dg.secretCode,
+          viewingDaily: true,
+          showConfetti: false,
+        }));
+        return;
+      }
+
       if (state.dailyHardUnlocked) {
         setState(prev => ({ ...prev, gameMode: mode }));
         return;
       }
-      const todayKey = getTodayKey();
-      const dailyKey = `${todayKey}_medium`;
-      if (state.dailyPlayed[dailyKey]) {
+
+      if (hasPlayedMedium) {
         setState(prev => ({
           ...prev,
           gameMode: mode,
@@ -407,7 +448,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return;
     }
     setState(prev => ({ ...prev, gameMode: mode }));
-  }, [state.dailyPlayed, state.dailyHardUnlocked, startGame]);
+  }, [state.dailyPlayed, state.dailyHardUnlocked, state.lastDailyGame, startGame]);
 
   const selectDifficulty = useCallback((d: Difficulty) => {
     haptic('medium');
@@ -529,6 +570,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
           newDailyPlayed[`${getTodayKey()}_${prev.difficulty}`] = true;
         }
 
+        const dailyResult: DailyGameResult | null = prev.gameMode === 'daily' ? {
+          rows: newRows, phase: 'won', difficulty: prev.difficulty || 'medium',
+          currentRow: prev.currentRow, secretCode: prev.secretCode, date: getTodayKey(),
+        } : null;
+
         const saveData: Partial<SaveData> = {
           streak: newStreak, coins: newCoins, hintTokens: newHintTokens,
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: newGamesWon,
@@ -536,6 +582,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           endlessWinStreak: newEndlessWinStreak, dailyPlayed: newDailyPlayed,
           lastPlayedDate: getTodayKey(), dailyHardUnlocked: newDailyHard,
           timeAttackLosses: 0,
+          ...(dailyResult ? { lastDailyGame: dailyResult } : {}),
         };
         persistSave(saveData);
 
@@ -602,6 +649,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           endlessAutoLevelUp: endlessLevelUp,
           dailyPlayed: newDailyPlayed,
           dailyHardUnlocked: newDailyHard,
+          lastDailyGame: dailyResult || prev.lastDailyGame,
         };
       }
 
@@ -627,11 +675,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
           newDailyPlayed[`${getTodayKey()}_${prev.difficulty}`] = true;
         }
 
+        const dailyLossResult: DailyGameResult | null = prev.gameMode === 'daily' ? {
+          rows: newRows, phase: 'lost', difficulty: prev.difficulty || 'medium',
+          currentRow: prev.currentRow, secretCode: prev.secretCode, date: getTodayKey(),
+        } : null;
+
         const saveData: Partial<SaveData> = {
           streak: newStreak, coins: prev.coins, hintTokens: prev.hintTokens,
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: prev.gamesWon,
           consecutiveLosses: newConsecutiveLosses, endlessWinStreak: 0,
           dailyPlayed: newDailyPlayed, lastPlayedDate: getTodayKey(),
+          ...(dailyLossResult ? { lastDailyGame: dailyLossResult } : {}),
         };
         persistSave(saveData);
 
@@ -780,6 +834,53 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { ...prev, revealingRow: null };
   }), []);
 
+  const PEG_EMOJIS = ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'];
+  const FEEDBACK_MAP = { green: '🟩', yellow: '🟨', grey: '⬛' };
+
+  const shareDaily = useCallback(() => {
+    const game = state.lastDailyGame;
+    if (!game && state.gameMode !== 'daily') return;
+
+    const rows = state.rows;
+    const won = state.phase === 'won';
+    const diff = state.effectiveDifficulty || state.difficulty || 'medium';
+    const config = DIFFICULTY_CONFIG[diff];
+    const attempts = won ? state.currentRow + 1 : 'X';
+
+    let text = `Griddl ${getTodayKey()} ${attempts}/${config.maxAttempts}\n\n`;
+    for (const row of rows) {
+      if (!row.submitted || !row.feedback) continue;
+      text += row.feedback.map(f => FEEDBACK_MAP[f]).join('') + '\n';
+    }
+
+    if (Platform.OS === 'web') {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(text);
+        setState(prev => ({ ...prev, toastMessage: 'Copied to clipboard!', toastType: 'success' }));
+      }
+    } else {
+      Share.share({ message: text });
+    }
+  }, [state.lastDailyGame, state.rows, state.phase, state.currentRow, state.effectiveDifficulty, state.difficulty, state.gameMode]);
+
+  const viewLastDaily = useCallback(() => {
+    if (!state.lastDailyGame) return;
+    const dg = state.lastDailyGame;
+    setState(prev => ({
+      ...prev,
+      screen: 'result',
+      gameMode: 'daily',
+      difficulty: dg.difficulty as Difficulty,
+      effectiveDifficulty: dg.difficulty as Difficulty,
+      phase: dg.phase,
+      rows: dg.rows,
+      currentRow: dg.currentRow,
+      secretCode: dg.secretCode,
+      viewingDaily: true,
+      showConfetti: false,
+    }));
+  }, [state.lastDailyGame]);
+
   const value = useMemo(() => ({
     ...state,
     selectMode,
@@ -795,7 +896,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     clearShake,
     finishReveal,
     getConfig,
-  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig]);
+    shareDaily,
+    viewLastDaily,
+  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig, shareDaily, viewLastDaily]);
 
   return (
     <GameContext.Provider value={value}>
