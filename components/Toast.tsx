@@ -18,9 +18,9 @@ interface ToastProps {
 
 function getBgColor(type: string) {
   switch (type) {
-    case 'success': return Colors.correct;
-    case 'error': return '#FF4757';
-    case 'milestone': return Colors.accent;
+    case 'success': return 'rgba(22,163,74,0.92)';
+    case 'error': return 'rgba(239,68,68,0.92)';
+    case 'milestone': return 'rgba(108,92,231,0.92)';
     default: return Colors.textPrimary;
   }
 }
