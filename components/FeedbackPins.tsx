@@ -36,7 +36,9 @@ function FeedbackPin({ color, index, pinSize, animated }: { color: string; index
           height: pinSize,
           borderRadius: pinSize / 2,
           backgroundColor: color,
-          margin: 1.5,
+          marginHorizontal: 2,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.15)',
         },
         animStyle,
       ]}
@@ -51,32 +53,16 @@ interface FeedbackPinsProps {
 }
 
 export default function FeedbackPins({ feedback, pinSize = 10, animated = false }: FeedbackPinsProps) {
-  const sorted = [...feedback].sort((a, b) => {
-    const order: Record<FeedbackPeg, number> = { green: 0, yellow: 1, grey: 2 };
-    return order[a] - order[b];
-  });
-
-  const total = sorted.length;
-  const cols = Math.ceil(total / 2);
-
   return (
     <View style={styles.container}>
-      {[0, 1].map(rowIdx => (
-        <View key={rowIdx} style={styles.row}>
-          {Array.from({ length: cols }, (_, colIdx) => {
-            const idx = rowIdx * cols + colIdx;
-            if (idx >= total) return <View key={colIdx} style={{ width: pinSize, height: pinSize, margin: 1.5 }} />;
-            return (
-              <FeedbackPin
-                key={colIdx}
-                color={PEG_COLOR_MAP[sorted[idx]]}
-                index={idx}
-                pinSize={pinSize}
-                animated={animated}
-              />
-            );
-          })}
-        </View>
+      {feedback.map((peg, i) => (
+        <FeedbackPin
+          key={i}
+          color={PEG_COLOR_MAP[peg]}
+          index={i}
+          pinSize={pinSize}
+          animated={animated}
+        />
       ))}
     </View>
   );
@@ -84,10 +70,7 @@ export default function FeedbackPins({ feedback, pinSize = 10, animated = false 
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  row: {
     flexDirection: 'row',
+    alignItems: 'center',
   },
 });

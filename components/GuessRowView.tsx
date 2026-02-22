@@ -123,12 +123,10 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
         {row.feedback ? (
           <FeedbackPins
             feedback={row.feedback}
-            pinSize={Math.max(8, pegSize * 0.24)}
+            pinSize={Math.max(10, pegSize * 0.3)}
             animated={isRevealing}
           />
-        ) : (
-          <View style={{ width: 36, height: 36 }} />
-        )}
+        ) : null}
       </View>
     </Animated.View>
   );
@@ -154,15 +152,14 @@ const styles = StyleSheet.create({
     opacity: 0.35,
   },
   pegsContainer: {
-    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
   },
   feedbackContainer: {
-    width: 44,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 12,
   },
 });

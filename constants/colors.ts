@@ -15,7 +15,7 @@ const Colors = {
 
   correctPeg: '#16A34A',
   misplacedPeg: '#CA8A04',
-  wrongPeg: '#374151',
+  wrongPeg: '#6B7280',
 
   coin: '#FFD93D',
   streak: '#FF6B6B',
