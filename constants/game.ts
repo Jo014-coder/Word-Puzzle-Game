@@ -36,8 +36,8 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxAttempts: 5,
     colorCount: 6,
     hintTokens: 0,
-    description: '6 pegs  |  5 attempts  |  fake feedback',
-    hasFakeFeedback: true,
+    description: '6 pegs  |  5 attempts',
+    hasFakeFeedback: false,
   },
 };
 
