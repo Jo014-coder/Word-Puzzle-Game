@@ -1,10 +1,10 @@
 import { Pressable, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
   withSequence,
-  withTiming,
 } from 'react-native-reanimated';
 import Colors from '@/constants/colors';
 
@@ -13,17 +13,17 @@ interface ColorPegProps {
   size: number;
   selected?: boolean;
   onPress?: () => void;
-  showBorder?: boolean;
   disabled?: boolean;
+  goldBorder?: boolean;
 }
 
-export default function ColorPeg({ colorIndex, size, selected, onPress, showBorder = true, disabled }: ColorPegProps) {
+export default function ColorPeg({ colorIndex, size, selected, onPress, disabled, goldBorder }: ColorPegProps) {
   const scale = useSharedValue(1);
 
   const handlePress = () => {
     if (disabled) return;
     scale.value = withSequence(
-      withSpring(1.2, { damping: 8 }),
+      withSpring(1.15, { damping: 8 }),
       withSpring(1, { damping: 8 })
     );
     onPress?.();
@@ -34,7 +34,7 @@ export default function ColorPeg({ colorIndex, size, selected, onPress, showBord
   }));
 
   const bgColor = colorIndex !== null ? Colors.pegs[colorIndex] : 'transparent';
-  const borderColor = selected ? Colors.accentGlow : (colorIndex !== null ? 'transparent' : Colors.borderLight);
+  const borderColor = selected ? Colors.accentGlow : (goldBorder ? '#FFD700' : (colorIndex !== null ? 'transparent' : Colors.borderLight));
 
   return (
     <Pressable onPress={handlePress} disabled={disabled}>
@@ -45,15 +45,27 @@ export default function ColorPeg({ colorIndex, size, selected, onPress, showBord
             width: size,
             height: size,
             borderRadius: size / 2,
-            backgroundColor: bgColor,
             borderColor,
-            borderWidth: selected ? 3 : (showBorder ? 2 : 0),
+            borderWidth: selected ? 3 : (colorIndex !== null || goldBorder ? 2 : 2),
+            borderStyle: colorIndex === null && !selected ? 'dashed' : 'solid',
           },
           animatedStyle,
         ]}
       >
-        {colorIndex === null && (
-          <View style={[styles.innerDot, { width: size * 0.3, height: size * 0.3, borderRadius: size * 0.15 }]} />
+        {colorIndex !== null ? (
+          <LinearGradient
+            colors={[
+              'rgba(255,255,255,0.35)',
+              bgColor,
+              'rgba(0,0,0,0.15)',
+            ]}
+            locations={[0, 0.45, 1]}
+            start={{ x: 0.3, y: 0 }}
+            end={{ x: 0.7, y: 1 }}
+            style={[styles.gradient, { borderRadius: (size - 6) / 2 }]}
+          />
+        ) : (
+          <View style={[styles.emptyDot, { width: size * 0.25, height: size * 0.25, borderRadius: size * 0.125 }]} />
         )}
       </Animated.View>
     </Pressable>
@@ -64,13 +76,13 @@ const styles = StyleSheet.create({
   peg: {
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    overflow: 'hidden',
   },
-  innerDot: {
-    backgroundColor: Colors.border,
+  gradient: {
+    ...StyleSheet.absoluteFillObject,
+    margin: 2,
+  },
+  emptyDot: {
+    backgroundColor: Colors.borderLight,
   },
 });
