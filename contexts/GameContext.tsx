@@ -1,9 +1,8 @@
-import { createContext, useContext, useState, useCallback, useEffect, useMemo, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { Difficulty, DIFFICULTY_CONFIG, WIN_MESSAGES } from '@/constants/game';
-import Colors from '@/constants/colors';
+import { Difficulty, GameMode, DIFFICULTY_CONFIG, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS } from '@/constants/game';
 
 export interface PegSlot {
   colorIndex: number | null;
@@ -12,12 +11,13 @@ export interface PegSlot {
 export interface Feedback {
   exact: number;
   misplaced: number;
+  wrong: number;
 }
 
 export interface GuessRow {
   pegs: PegSlot[];
   feedback: Feedback | null;
-  revealed: boolean;
+  submitted: boolean;
 }
 
 interface SaveData {
@@ -27,29 +27,71 @@ interface SaveData {
   streakShield: boolean;
   gamesPlayed: number;
   gamesWon: number;
+  lastPlayedDate: string;
+  dailyPlayed: Record<string, boolean>;
+  consecutiveLosses: number;
+  goldPegsUnlocked: boolean;
+  obsidianTheme: boolean;
+  endlessWinStreak: number;
 }
 
-interface GameState {
-  phase: 'menu' | 'playing' | 'won' | 'lost';
+const DEFAULT_SAVE: SaveData = {
+  streak: 0,
+  coins: 0,
+  hintTokens: 1,
+  streakShield: false,
+  gamesPlayed: 0,
+  gamesWon: 0,
+  lastPlayedDate: '',
+  dailyPlayed: {},
+  consecutiveLosses: 0,
+  goldPegsUnlocked: false,
+  obsidianTheme: false,
+  endlessWinStreak: 0,
+};
+
+export type Screen = 'home' | 'game' | 'result';
+
+export interface GameState {
+  screen: Screen;
+  gameMode: GameMode | null;
   difficulty: Difficulty | null;
+  effectiveDifficulty: Difficulty | null;
   secretCode: number[];
   rows: GuessRow[];
   currentRow: number;
   selectedSlot: number;
+  phase: 'playing' | 'won' | 'lost';
   streak: number;
   coins: number;
   hintTokens: number;
   streakShield: boolean;
   gamesPlayed: number;
   gamesWon: number;
+  goldPegsUnlocked: boolean;
+  obsidianTheme: boolean;
   toastMessage: string | null;
   toastType: 'info' | 'success' | 'error' | 'milestone';
   showConfetti: boolean;
   shakeRow: number | null;
   revealingRow: number | null;
+  coinsEarned: number;
+  timeLeft: number;
+  timeAttackScore: number;
+  timeAttackCoins: number;
+  isTimerRunning: boolean;
+  consecutiveLosses: number;
+  hiddenDifficultyReduction: boolean;
+  endlessWinStreak: number;
+  endlessAutoLevelUp: boolean;
+  fakeFeedbackUsed: boolean;
+  dailyPlayed: Record<string, boolean>;
+  lastPlayedDate: string;
+  dailyLoginClaimed: boolean;
 }
 
 interface GameContextValue extends GameState {
+  selectMode: (mode: GameMode) => void;
   selectDifficulty: (d: Difficulty) => void;
   selectColor: (colorIndex: number) => void;
   selectSlot: (slotIndex: number) => void;
@@ -61,11 +103,10 @@ interface GameContextValue extends GameState {
   clearToast: () => void;
   clearShake: () => void;
   finishReveal: () => void;
-  getConfig: () => typeof DIFFICULTY_CONFIG.easy | null;
+  getConfig: () => typeof DIFFICULTY_CONFIG.easy;
 }
 
-const STORAGE_KEY = 'griddl_mastermind_save';
-
+const STORAGE_KEY = 'griddl_v2_save';
 const GameContext = createContext<GameContextValue | null>(null);
 
 export function useGame() {
@@ -74,74 +115,109 @@ export function useGame() {
   return ctx;
 }
 
-function generateSecret(config: typeof DIFFICULTY_CONFIG.easy): number[] {
-  const code: number[] = [];
-  const available = Array.from({ length: config.colorCount }, (_, i) => i);
+function seededRandom(seed: number) {
+  let s = seed;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
 
-  for (let i = 0; i < config.sequenceLength; i++) {
-    if (config.allowDuplicates) {
+function getDailySeed(): number {
+  const d = new Date();
+  return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+}
+
+function getTodayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function generateCode(config: typeof DIFFICULTY_CONFIG.easy, daily: boolean = false): number[] {
+  const code: number[] = [];
+  if (daily) {
+    const rng = seededRandom(getDailySeed() + config.codeLength);
+    for (let i = 0; i < config.codeLength; i++) {
+      code.push(Math.floor(rng() * config.colorCount));
+    }
+  } else {
+    for (let i = 0; i < config.codeLength; i++) {
       code.push(Math.floor(Math.random() * config.colorCount));
-    } else {
-      const idx = Math.floor(Math.random() * available.length);
-      code.push(available[idx]);
-      available.splice(idx, 1);
     }
   }
   return code;
 }
 
-function computeFeedback(guess: number[], secret: number[]): Feedback {
+function computeFeedback(guess: number[], secret: number[], hasFakeFeedback: boolean, alreadyUsedFake: boolean): { feedback: Feedback; fakeUsed: boolean } {
   let exact = 0;
-  const secretRemaining: (number | null)[] = [...secret];
-  const guessRemaining: (number | null)[] = [...guess];
+  const secretPool: (number | null)[] = [...secret];
+  const guessPool: (number | null)[] = [...guess];
 
   for (let i = 0; i < guess.length; i++) {
     if (guess[i] === secret[i]) {
       exact++;
-      secretRemaining[i] = null;
-      guessRemaining[i] = null;
+      secretPool[i] = null;
+      guessPool[i] = null;
     }
   }
 
   let misplaced = 0;
-  for (let i = 0; i < guessRemaining.length; i++) {
-    if (guessRemaining[i] === null) continue;
-    const idx = secretRemaining.indexOf(guessRemaining[i]!);
+  for (let i = 0; i < guessPool.length; i++) {
+    if (guessPool[i] === null) continue;
+    const idx = secretPool.indexOf(guessPool[i]!);
     if (idx !== -1) {
       misplaced++;
-      secretRemaining[idx] = null;
+      secretPool[idx] = null;
     }
   }
 
-  return { exact, misplaced };
+  let displayExact = exact;
+  let displayMisplaced = misplaced;
+  let fakeUsed = false;
+
+  if (hasFakeFeedback && !alreadyUsedFake && exact >= 1) {
+    displayExact = exact - 1;
+    displayMisplaced = misplaced + 1;
+    fakeUsed = true;
+  }
+
+  const wrong = guess.length - displayExact - displayMisplaced;
+
+  return {
+    feedback: { exact: displayExact, misplaced: displayMisplaced, wrong },
+    fakeUsed,
+  };
 }
 
 function createEmptyRows(config: typeof DIFFICULTY_CONFIG.easy): GuessRow[] {
   return Array.from({ length: config.maxAttempts }, () => ({
-    pegs: Array.from({ length: config.sequenceLength }, () => ({ colorIndex: null })),
+    pegs: Array.from({ length: config.codeLength }, () => ({ colorIndex: null })),
     feedback: null,
-    revealed: false,
+    submitted: false,
   }));
 }
 
 async function loadSave(): Promise<SaveData> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) return { ...DEFAULT_SAVE, ...JSON.parse(raw) };
   } catch {}
-  return { streak: 0, coins: 0, hintTokens: 1, streakShield: false, gamesPlayed: 0, gamesWon: 0 };
+  return { ...DEFAULT_SAVE };
 }
 
-async function persistSave(data: SaveData) {
+async function persistSave(data: Partial<SaveData>) {
   try {
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    const existing = await loadSave();
+    const merged = { ...existing, ...data };
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   } catch {}
 }
 
-const haptic = (type: 'light' | 'success' | 'error' | 'warning') => {
+const haptic = (type: 'light' | 'medium' | 'success' | 'error' | 'warning') => {
   if (Platform.OS === 'web') return;
   switch (type) {
     case 'light': Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); break;
+    case 'medium': Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); break;
     case 'success': Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); break;
     case 'error': Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error); break;
     case 'warning': Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); break;
@@ -149,82 +225,204 @@ const haptic = (type: 'light' | 'success' | 'error' | 'warning') => {
 };
 
 export function GameProvider({ children }: { children: ReactNode }) {
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   const [state, setState] = useState<GameState>({
-    phase: 'menu',
+    screen: 'home',
+    gameMode: null,
     difficulty: null,
+    effectiveDifficulty: null,
     secretCode: [],
     rows: [],
     currentRow: 0,
     selectedSlot: 0,
+    phase: 'playing',
     streak: 0,
     coins: 0,
     hintTokens: 1,
     streakShield: false,
     gamesPlayed: 0,
     gamesWon: 0,
+    goldPegsUnlocked: false,
+    obsidianTheme: false,
     toastMessage: null,
     toastType: 'info',
     showConfetti: false,
     shakeRow: null,
     revealingRow: null,
+    coinsEarned: 0,
+    timeLeft: TIME_ATTACK_DURATION,
+    timeAttackScore: 0,
+    timeAttackCoins: 0,
+    isTimerRunning: false,
+    consecutiveLosses: 0,
+    hiddenDifficultyReduction: false,
+    endlessWinStreak: 0,
+    endlessAutoLevelUp: false,
+    fakeFeedbackUsed: false,
+    dailyPlayed: {},
+    lastPlayedDate: '',
+    dailyLoginClaimed: false,
   });
 
   useEffect(() => {
     loadSave().then(save => {
-      setState(prev => ({ ...prev, ...save }));
-    });
-  }, []);
-
-  const getConfig = useCallback(() => {
-    if (!state.difficulty) return null;
-    return DIFFICULTY_CONFIG[state.difficulty];
-  }, [state.difficulty]);
-
-  const selectDifficulty = useCallback((d: Difficulty) => {
-    const config = DIFFICULTY_CONFIG[d];
-    const secret = generateSecret(config);
-    const rows = createEmptyRows(config);
-    haptic('light');
-
-    loadSave().then(save => {
+      const today = getTodayKey();
+      const claimedToday = save.lastPlayedDate === today;
       setState(prev => ({
         ...prev,
-        phase: 'playing',
-        difficulty: d,
-        secretCode: secret,
-        rows,
-        currentRow: 0,
-        selectedSlot: 0,
-        toastMessage: null,
-        showConfetti: false,
-        shakeRow: null,
-        revealingRow: null,
-        ...save,
+        streak: save.streak,
+        coins: save.coins,
+        hintTokens: save.hintTokens,
+        streakShield: save.streakShield,
+        gamesPlayed: save.gamesPlayed,
+        gamesWon: save.gamesWon,
+        goldPegsUnlocked: save.goldPegsUnlocked,
+        obsidianTheme: save.obsidianTheme,
+        consecutiveLosses: save.consecutiveLosses,
+        endlessWinStreak: save.endlessWinStreak,
+        dailyPlayed: save.dailyPlayed || {},
+        lastPlayedDate: save.lastPlayedDate,
+        dailyLoginClaimed: claimedToday,
       }));
+
+      if (!claimedToday) {
+        const newCoins = save.coins + 10;
+        persistSave({ coins: newCoins, lastPlayedDate: today });
+        setState(prev => ({
+          ...prev,
+          coins: newCoins,
+          lastPlayedDate: today,
+          dailyLoginClaimed: true,
+          toastMessage: 'Daily login: +10 coins!',
+          toastType: 'milestone',
+        }));
+      }
     });
   }, []);
+
+  useEffect(() => {
+    if (state.isTimerRunning && state.timeLeft > 0) {
+      timerRef.current = setInterval(() => {
+        setState(prev => {
+          if (!prev.isTimerRunning) return prev;
+          const newTime = prev.timeLeft - 1;
+          if (newTime <= 0) {
+            return {
+              ...prev,
+              timeLeft: 0,
+              isTimerRunning: false,
+              phase: 'lost',
+              screen: 'result',
+              toastMessage: `Time's up! Codes solved: ${prev.timeAttackScore}`,
+              toastType: 'error',
+            };
+          }
+          return { ...prev, timeLeft: newTime };
+        });
+      }, 1000);
+      return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    }
+  }, [state.isTimerRunning, state.timeLeft <= 0]);
+
+  const getConfig = useCallback(() => {
+    const diff = state.effectiveDifficulty || state.difficulty || 'easy';
+    return DIFFICULTY_CONFIG[diff];
+  }, [state.effectiveDifficulty, state.difficulty]);
+
+  const selectMode = useCallback((mode: GameMode) => {
+    haptic('light');
+    setState(prev => ({ ...prev, gameMode: mode }));
+  }, []);
+
+  const startGame = useCallback((difficulty: Difficulty, mode: GameMode, save: SaveData) => {
+    let effectiveDiff = difficulty;
+    let hiddenReduction = false;
+
+    if (save.consecutiveLosses >= 3 && difficulty !== 'easy') {
+      const diffs: Difficulty[] = ['easy', 'medium', 'hard'];
+      const idx = diffs.indexOf(difficulty);
+      effectiveDiff = diffs[Math.max(0, idx - 1)];
+      hiddenReduction = true;
+    }
+
+    const config = DIFFICULTY_CONFIG[effectiveDiff];
+    const isDaily = mode === 'daily';
+    const secret = generateCode(config, isDaily);
+    const rows = createEmptyRows(config);
+    const isTimeAttack = mode === 'timeAttack';
+
+    setState(prev => ({
+      ...prev,
+      screen: 'game',
+      gameMode: mode,
+      difficulty,
+      effectiveDifficulty: effectiveDiff,
+      secretCode: secret,
+      rows,
+      currentRow: 0,
+      selectedSlot: 0,
+      phase: 'playing',
+      toastMessage: null,
+      showConfetti: false,
+      shakeRow: null,
+      revealingRow: null,
+      coinsEarned: 0,
+      fakeFeedbackUsed: false,
+      hiddenDifficultyReduction: hiddenReduction,
+      endlessAutoLevelUp: false,
+      timeLeft: isTimeAttack ? TIME_ATTACK_DURATION : 0,
+      timeAttackScore: isTimeAttack ? 0 : prev.timeAttackScore,
+      timeAttackCoins: isTimeAttack ? 0 : prev.timeAttackCoins,
+      isTimerRunning: isTimeAttack,
+      streak: save.streak,
+      coins: save.coins,
+      hintTokens: save.hintTokens + config.hintTokens,
+      streakShield: save.streakShield,
+      gamesPlayed: save.gamesPlayed,
+      gamesWon: save.gamesWon,
+      goldPegsUnlocked: save.goldPegsUnlocked,
+      obsidianTheme: save.obsidianTheme,
+      consecutiveLosses: save.consecutiveLosses,
+      endlessWinStreak: save.endlessWinStreak,
+    }));
+  }, []);
+
+  const selectDifficulty = useCallback((d: Difficulty) => {
+    haptic('medium');
+    const mode = state.gameMode || 'endless';
+
+    if (mode === 'daily') {
+      const todayKey = getTodayKey();
+      const dailyKey = `${todayKey}_${d}`;
+      if (state.dailyPlayed[dailyKey]) {
+        setState(prev => ({
+          ...prev,
+          toastMessage: 'Already played today! Come back tomorrow.',
+          toastType: 'info',
+        }));
+        return;
+      }
+    }
+
+    loadSave().then(save => startGame(d, mode, save));
+  }, [state.gameMode, state.dailyPlayed, startGame]);
 
   const selectSlot = useCallback((slotIndex: number) => {
     haptic('light');
-    setState(prev => {
-      if (prev.phase !== 'playing') return prev;
-      return { ...prev, selectedSlot: slotIndex };
-    });
+    setState(prev => prev.phase !== 'playing' ? prev : { ...prev, selectedSlot: slotIndex });
   }, []);
 
   const selectColor = useCallback((colorIndex: number) => {
     haptic('light');
     setState(prev => {
       if (prev.phase !== 'playing') return prev;
+      const config = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
       const newRows = prev.rows.map((r, ri) => {
         if (ri !== prev.currentRow) return r;
-        return {
-          ...r,
-          pegs: r.pegs.map((p, pi) => pi === prev.selectedSlot ? { colorIndex } : p),
-        };
+        return { ...r, pegs: r.pegs.map((p, pi) => pi === prev.selectedSlot ? { colorIndex } : p) };
       });
-      const config = DIFFICULTY_CONFIG[prev.difficulty!];
-      const nextSlot = Math.min(prev.selectedSlot + 1, config.sequenceLength - 1);
+      const nextSlot = Math.min(prev.selectedSlot + 1, config.codeLength - 1);
       return { ...prev, rows: newRows, selectedSlot: nextSlot };
     });
   }, []);
@@ -235,10 +433,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (prev.phase !== 'playing') return prev;
       const newRows = prev.rows.map((r, ri) => {
         if (ri !== prev.currentRow) return r;
-        return {
-          ...r,
-          pegs: r.pegs.map((p, pi) => pi === prev.selectedSlot ? { colorIndex: null } : p),
-        };
+        return { ...r, pegs: r.pegs.map((p, pi) => pi === prev.selectedSlot ? { colorIndex: null } : p) };
       });
       return { ...prev, rows: newRows };
     });
@@ -246,65 +441,140 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const submitGuess = useCallback(() => {
     setState(prev => {
-      if (prev.phase !== 'playing' || !prev.difficulty) return prev;
-      const config = DIFFICULTY_CONFIG[prev.difficulty];
+      if (prev.phase !== 'playing') return prev;
+      const diff = prev.effectiveDifficulty || prev.difficulty || 'easy';
+      const config = DIFFICULTY_CONFIG[diff];
       const currentPegs = prev.rows[prev.currentRow].pegs;
 
       if (currentPegs.some(p => p.colorIndex === null)) {
         haptic('warning');
-        return { ...prev, shakeRow: prev.currentRow, toastMessage: 'Fill all slots', toastType: 'error' as const };
+        return { ...prev, shakeRow: prev.currentRow, toastMessage: 'Fill all slots first', toastType: 'error' as const };
       }
 
       const guess = currentPegs.map(p => p.colorIndex!);
-      const feedback = computeFeedback(guess, prev.secretCode);
+      const { feedback, fakeUsed } = computeFeedback(
+        guess, prev.secretCode, config.hasFakeFeedback, prev.fakeFeedbackUsed
+      );
 
       const newRows = prev.rows.map((r, ri) => {
         if (ri !== prev.currentRow) return r;
-        return { ...r, feedback, revealed: true };
+        return { ...r, feedback, submitted: true };
       });
 
-      const isWin = feedback.exact === config.sequenceLength;
+      const realExact = guess.filter((g, i) => g === prev.secretCode[i]).length;
+      const isWin = realExact === config.codeLength;
       const isLastAttempt = prev.currentRow >= config.maxAttempts - 1;
 
       if (isWin) {
         haptic('success');
         const newStreak = prev.streak + 1;
-        const coinReward = 20 + newStreak * 5;
+        let coinReward = 20 + newStreak * 5;
         let bonusCoins = 0;
         let milestoneMsg: string | null = null;
         let newHintTokens = prev.hintTokens;
         let newShield = prev.streakShield;
+        let newGold = prev.goldPegsUnlocked;
+        let newObsidian = prev.obsidianTheme;
 
         if (newStreak === 3) { bonusCoins = 50; milestoneMsg = 'Streak 3 bonus: +50 coins!'; }
-        if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
-        if (newStreak === 10) { newShield = true; milestoneMsg = 'Streak 10: Shield unlocked!'; }
-        if (newStreak === 15) { milestoneMsg = 'Streak 15: Master Cracker!'; }
+        else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
+        else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
+        else if (newStreak === 10) { newShield = true; milestoneMsg = 'Streak 10: Streak Shield unlocked!'; }
+        else if (newStreak === 15) { newObsidian = true; milestoneMsg = 'Streak 15: Obsidian theme unlocked!'; }
 
-        const newCoins = prev.coins + coinReward + bonusCoins;
-        const attemptMsg = WIN_MESSAGES[Math.min(prev.currentRow, WIN_MESSAGES.length - 1)];
+        const isTimeAttack = prev.gameMode === 'timeAttack';
+        let comboMultiplier = 1;
+        if (isTimeAttack) {
+          if (prev.currentRow <= 1) comboMultiplier = 3;
+          else if (prev.currentRow <= 2) comboMultiplier = 2;
+          coinReward *= comboMultiplier;
+        }
+
+        const totalCoinsEarned = coinReward + bonusCoins;
+        const newCoins = prev.coins + totalCoinsEarned;
         const newGamesWon = prev.gamesWon + 1;
         const newGamesPlayed = prev.gamesPlayed + 1;
+        const attemptMsg = WIN_MESSAGES[Math.min(prev.currentRow, 7)] || 'Well done!';
 
-        const saveData: SaveData = {
+        let newEndlessWinStreak = prev.gameMode === 'endless' ? prev.endlessWinStreak + 1 : prev.endlessWinStreak;
+        let endlessLevelUp = false;
+        if (prev.gameMode === 'endless' && newEndlessWinStreak > 0 && newEndlessWinStreak % 3 === 0) {
+          endlessLevelUp = true;
+        }
+
+        const newDailyPlayed = { ...prev.dailyPlayed };
+        if (prev.gameMode === 'daily' && prev.difficulty) {
+          newDailyPlayed[`${getTodayKey()}_${prev.difficulty}`] = true;
+        }
+
+        const saveData: Partial<SaveData> = {
           streak: newStreak, coins: newCoins, hintTokens: newHintTokens,
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: newGamesWon,
+          consecutiveLosses: 0, goldPegsUnlocked: newGold, obsidianTheme: newObsidian,
+          endlessWinStreak: newEndlessWinStreak, dailyPlayed: newDailyPlayed,
+          lastPlayedDate: getTodayKey(),
         };
         persistSave(saveData);
+
+        if (isTimeAttack) {
+          const newTimeAttackScore = prev.timeAttackScore + 1;
+          const newTime = prev.timeLeft + TIME_ATTACK_BONUS;
+          const newTimeAttackCoins = prev.timeAttackCoins + totalCoinsEarned;
+
+          const newConfig = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
+          const newSecret = generateCode(newConfig, false);
+          const newEmptyRows = createEmptyRows(newConfig);
+
+          return {
+            ...prev,
+            rows: newRows,
+            revealingRow: prev.currentRow,
+            streak: newStreak,
+            coins: newCoins,
+            hintTokens: newHintTokens,
+            streakShield: newShield,
+            gamesPlayed: newGamesPlayed,
+            gamesWon: newGamesWon,
+            goldPegsUnlocked: newGold,
+            obsidianTheme: newObsidian,
+            consecutiveLosses: 0,
+            coinsEarned: totalCoinsEarned,
+            timeAttackScore: newTimeAttackScore,
+            timeAttackCoins: newTimeAttackCoins,
+            timeLeft: newTime,
+            endlessWinStreak: newEndlessWinStreak,
+            toastMessage: comboMultiplier > 1 ? `${comboMultiplier}x combo! +${totalCoinsEarned}` : `+${totalCoinsEarned} coins`,
+            toastType: 'success' as const,
+            fakeFeedbackUsed: false,
+            secretCode: newSecret,
+            currentRow: 0,
+            selectedSlot: 0,
+            dailyPlayed: newDailyPlayed,
+          };
+        }
 
         return {
           ...prev,
           rows: newRows,
           revealingRow: prev.currentRow,
           phase: 'won' as const,
+          screen: 'result' as const,
           streak: newStreak,
           coins: newCoins,
           hintTokens: newHintTokens,
           streakShield: newShield,
           gamesPlayed: newGamesPlayed,
           gamesWon: newGamesWon,
+          goldPegsUnlocked: newGold,
+          obsidianTheme: newObsidian,
+          consecutiveLosses: 0,
+          coinsEarned: totalCoinsEarned,
           toastMessage: milestoneMsg || attemptMsg,
           toastType: milestoneMsg ? 'milestone' as const : 'success' as const,
           showConfetti: true,
+          endlessWinStreak: newEndlessWinStreak,
+          endlessAutoLevelUp: endlessLevelUp,
+          dailyPlayed: newDailyPlayed,
         };
       }
 
@@ -312,38 +582,73 @@ export function GameProvider({ children }: { children: ReactNode }) {
         haptic('error');
         let newStreak = 0;
         let newShield = prev.streakShield;
-        let loseMsg = 'Game over! Check the code above.';
+        let loseMsg = 'Game over!';
+        let loseType: 'error' | 'milestone' = 'error';
 
         if (prev.streakShield) {
           newShield = false;
           newStreak = prev.streak;
           loseMsg = 'Shield saved your streak!';
+          loseType = 'milestone';
         }
 
+        const newConsecutiveLosses = prev.consecutiveLosses + 1;
         const newGamesPlayed = prev.gamesPlayed + 1;
-        const saveData: SaveData = {
+
+        const newDailyPlayed = { ...prev.dailyPlayed };
+        if (prev.gameMode === 'daily' && prev.difficulty) {
+          newDailyPlayed[`${getTodayKey()}_${prev.difficulty}`] = true;
+        }
+
+        const saveData: Partial<SaveData> = {
           streak: newStreak, coins: prev.coins, hintTokens: prev.hintTokens,
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: prev.gamesWon,
+          consecutiveLosses: newConsecutiveLosses, endlessWinStreak: 0,
+          dailyPlayed: newDailyPlayed, lastPlayedDate: getTodayKey(),
         };
         persistSave(saveData);
+
+        if (prev.gameMode === 'timeAttack') {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return {
+            ...prev,
+            rows: newRows,
+            revealingRow: prev.currentRow,
+            phase: 'lost' as const,
+            screen: 'result' as const,
+            streak: newStreak,
+            streakShield: newShield,
+            consecutiveLosses: newConsecutiveLosses,
+            gamesPlayed: newGamesPlayed,
+            isTimerRunning: false,
+            toastMessage: `Time Attack over! Solved: ${prev.timeAttackScore}`,
+            toastType: 'info' as const,
+            dailyPlayed: newDailyPlayed,
+            endlessWinStreak: 0,
+          };
+        }
 
         return {
           ...prev,
           rows: newRows,
           revealingRow: prev.currentRow,
           phase: 'lost' as const,
+          screen: 'result' as const,
           streak: newStreak,
           streakShield: newShield,
+          consecutiveLosses: newConsecutiveLosses,
           gamesPlayed: newGamesPlayed,
           toastMessage: loseMsg,
-          toastType: prev.streakShield ? 'milestone' as const : 'error' as const,
+          toastType: loseType as 'error' | 'milestone',
+          dailyPlayed: newDailyPlayed,
+          endlessWinStreak: 0,
         };
       }
 
       haptic('light');
 
       let nearMissMsg: string | null = null;
-      const wrongCount = config.sequenceLength - feedback.exact;
+      const wrongCount = config.codeLength - realExact;
       if (wrongCount === 1) nearMissMsg = 'So close!';
       else if (wrongCount === 2 && feedback.misplaced >= 1) nearMissMsg = 'Almost there!';
 
@@ -355,56 +660,60 @@ export function GameProvider({ children }: { children: ReactNode }) {
         selectedSlot: 0,
         toastMessage: nearMissMsg,
         toastType: 'info' as const,
+        fakeFeedbackUsed: prev.fakeFeedbackUsed || fakeUsed,
       };
     });
   }, []);
 
   const playAgain = useCallback(() => {
-    if (!state.difficulty) return;
-    const config = DIFFICULTY_CONFIG[state.difficulty];
-    const secret = generateSecret(config);
-    const rows = createEmptyRows(config);
     haptic('light');
-    setState(prev => ({
-      ...prev,
-      phase: 'playing',
-      secretCode: secret,
-      rows,
-      currentRow: 0,
-      selectedSlot: 0,
-      toastMessage: null,
-      showConfetti: false,
-      shakeRow: null,
-      revealingRow: null,
-    }));
-  }, [state.difficulty]);
+    const mode = state.gameMode || 'endless';
+    let diff = state.difficulty || 'easy';
+
+    if (mode === 'endless' && state.endlessAutoLevelUp && diff !== 'hard') {
+      const diffs: Difficulty[] = ['easy', 'medium', 'hard'];
+      const idx = diffs.indexOf(diff);
+      diff = diffs[Math.min(idx + 1, 2)];
+    }
+
+    loadSave().then(save => startGame(diff, mode, save));
+  }, [state.gameMode, state.difficulty, state.endlessAutoLevelUp, startGame]);
 
   const backToMenu = useCallback(() => {
     haptic('light');
+    if (timerRef.current) clearInterval(timerRef.current);
     setState(prev => ({
       ...prev,
-      phase: 'menu',
+      screen: 'home',
+      gameMode: null,
       difficulty: null,
+      effectiveDifficulty: null,
       secretCode: [],
       rows: [],
       currentRow: 0,
       selectedSlot: 0,
+      phase: 'playing',
       toastMessage: null,
       showConfetti: false,
       shakeRow: null,
       revealingRow: null,
+      coinsEarned: 0,
+      isTimerRunning: false,
+      timeAttackScore: 0,
+      timeAttackCoins: 0,
     }));
   }, []);
 
   const useHint = useCallback(() => {
     setState(prev => {
-      if (prev.phase !== 'playing' || prev.hintTokens <= 0 || !prev.difficulty) return prev;
-      const config = DIFFICULTY_CONFIG[prev.difficulty];
+      if (prev.phase !== 'playing' || prev.hintTokens <= 0) return prev;
+      const diff = prev.effectiveDifficulty || prev.difficulty || 'easy';
+      const config = DIFFICULTY_CONFIG[diff];
 
       const unrevealedIndices: number[] = [];
-      for (let i = 0; i < config.sequenceLength; i++) {
+      for (let i = 0; i < config.codeLength; i++) {
         const alreadyKnown = prev.rows.some(
-          (row, ri) => ri < prev.currentRow && row.feedback && row.pegs[i].colorIndex === prev.secretCode[i]
+          (row, ri) => ri < prev.currentRow && row.submitted && row.pegs[i].colorIndex === prev.secretCode[i]
         );
         if (!alreadyKnown) unrevealedIndices.push(i);
       }
@@ -416,45 +725,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const newRows = prev.rows.map((r, ri) => {
         if (ri !== prev.currentRow) return r;
-        return {
-          ...r,
-          pegs: r.pegs.map((p, pi) => pi === hintIdx ? { colorIndex: hintColor } : p),
-        };
+        return { ...r, pegs: r.pegs.map((p, pi) => pi === hintIdx ? { colorIndex: hintColor } : p) };
       });
 
       const newHintTokens = prev.hintTokens - 1;
       haptic('success');
-
-      const saveData: SaveData = {
-        streak: prev.streak, coins: prev.coins, hintTokens: newHintTokens,
-        streakShield: prev.streakShield, gamesPlayed: prev.gamesPlayed, gamesWon: prev.gamesWon,
-      };
-      persistSave(saveData);
+      persistSave({ hintTokens: newHintTokens });
 
       return {
         ...prev,
         rows: newRows,
         hintTokens: newHintTokens,
         toastMessage: `Hint: Position ${hintIdx + 1} revealed!`,
-        toastType: 'info' as const,
+        toastType: 'success' as const,
       };
     });
   }, []);
 
-  const clearToast = useCallback(() => {
-    setState(prev => ({ ...prev, toastMessage: null }));
-  }, []);
-
-  const clearShake = useCallback(() => {
-    setState(prev => ({ ...prev, shakeRow: null }));
-  }, []);
-
-  const finishReveal = useCallback(() => {
-    setState(prev => ({ ...prev, revealingRow: null }));
-  }, []);
+  const clearToast = useCallback(() => setState(prev => ({ ...prev, toastMessage: null })), []);
+  const clearShake = useCallback(() => setState(prev => ({ ...prev, shakeRow: null })), []);
+  const finishReveal = useCallback(() => setState(prev => ({ ...prev, revealingRow: null })), []);
 
   const value = useMemo(() => ({
     ...state,
+    selectMode,
     selectDifficulty,
     selectColor,
     selectSlot,
@@ -467,7 +761,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     clearShake,
     finishReveal,
     getConfig,
-  }), [state, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig]);
+  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig]);
 
   return (
     <GameContext.Provider value={value}>
