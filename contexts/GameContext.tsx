@@ -413,10 +413,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       if (hasPlayed && state.lastDailyGame && state.lastDailyGame.date === todayKey) {
         const dg = state.lastDailyGame;
-        const config = DIFFICULTY_CONFIG[dg.difficulty as Difficulty];
         setState(prev => ({
           ...prev,
-          screen: 'result',
+          screen: 'game',
           gameMode: 'daily',
           difficulty: dg.difficulty as Difficulty,
           effectiveDifficulty: dg.difficulty as Difficulty,
@@ -784,6 +783,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       isTimerRunning: false,
       timeAttackScore: 0,
       timeAttackCoins: 0,
+      viewingDaily: false,
     }));
   }, []);
 
@@ -868,7 +868,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const dg = state.lastDailyGame;
     setState(prev => ({
       ...prev,
-      screen: 'result',
+      screen: 'game',
       gameMode: 'daily',
       difficulty: dg.difficulty as Difficulty,
       effectiveDifficulty: dg.difficulty as Difficulty,

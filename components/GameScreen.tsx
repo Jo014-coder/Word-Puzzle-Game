@@ -149,7 +149,7 @@ function ColorPalette() {
 }
 
 export default function GameScreen() {
-  const { rows, currentRow, shakeRow, revealingRow, toastMessage, toastType, clearToast, effectiveDifficulty, difficulty, phase } = useGame();
+  const { rows, currentRow, shakeRow, revealingRow, toastMessage, toastType, clearToast, effectiveDifficulty, difficulty, phase, viewingDaily, shareDaily, backToMenu, secretCode } = useGame();
   const insets = useSafeAreaInsets();
   const diff = effectiveDifficulty || difficulty || 'easy';
   const config = DIFFICULTY_CONFIG[diff];
@@ -189,7 +189,38 @@ export default function GameScreen() {
       </ScrollView>
 
       <View style={{ paddingBottom: insets.bottom + webBottom }}>
-        <ColorPalette />
+        {viewingDaily && phase !== 'playing' ? (
+          <View style={styles.dailyReviewButtons}>
+            {secretCode && (
+              <View style={styles.secretCodeRow}>
+                <Text style={styles.secretCodeLabel}>The code was:</Text>
+                <View style={styles.secretCodePegs}>
+                  {secretCode.map((c, i) => (
+                    <ColorPeg key={i} colorIndex={c} size={28} disabled />
+                  ))}
+                </View>
+              </View>
+            )}
+            <View style={styles.dailyReviewRow}>
+              <Pressable
+                onPress={shareDaily}
+                style={({ pressed }) => [styles.shareButton, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="share-social" size={20} color={Colors.textPrimary} />
+                <Text style={styles.shareButtonText}>Share</Text>
+              </Pressable>
+              <Pressable
+                onPress={backToMenu}
+                style={({ pressed }) => [styles.menuButton, { opacity: pressed ? 0.8 : 1 }]}
+              >
+                <Ionicons name="grid-outline" size={18} color={Colors.textSecondary} />
+                <Text style={styles.menuButtonText}>Back to Menu</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : (
+          <ColorPalette />
+        )}
       </View>
 
       {toastMessage && (
@@ -332,6 +363,65 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: Colors.accent,
+  },
+  dailyReviewButtons: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: Colors.backgroundLight,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+  },
+  secretCodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  secretCodeLabel: {
+    color: Colors.textSecondary,
+    fontSize: 13,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  secretCodePegs: {
+    flexDirection: 'row',
+    gap: 6,
+  },
+  dailyReviewRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  shareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.accent,
+  },
+  shareButtonText: {
+    color: Colors.textPrimary,
+    fontWeight: '700',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
+  },
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: Colors.surface,
+  },
+  menuButtonText: {
+    color: Colors.textSecondary,
+    fontWeight: '600',
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
   },
   actionButtonText: {
     color: Colors.textPrimary,
