@@ -33,7 +33,10 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
   const glowOpacity = useSharedValue(0);
   const pulseOpacity = useSharedValue(0);
 
-  const pegSize = Math.min(Math.floor((Math.min(width, 420) - 110) / codeLength) - 8, 46);
+  const availableWidth = Math.min(width, 420) - 24;
+  const feedbackWidth = codeLength * 16 + 16;
+  const pegAreaWidth = availableWidth - feedbackWidth;
+  const pegSize = Math.min(Math.floor(pegAreaWidth / codeLength) - 8, 44);
 
   useEffect(() => {
     if (isCurrent && phase === 'playing') {
@@ -123,7 +126,7 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
         {row.feedback ? (
           <FeedbackPins
             feedback={row.feedback}
-            pinSize={Math.max(10, pegSize * 0.3)}
+            pinSize={12}
             animated={isRevealing}
           />
         ) : null}
