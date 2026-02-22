@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { Difficulty, GameMode, DIFFICULTY_CONFIG, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS } from '@/constants/game';
+import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS } from '@/constants/game';
 
 export interface PegSlot {
   colorIndex: number | null;
@@ -329,9 +329,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let hiddenReduction = false;
 
     if (save.consecutiveLosses >= 3 && difficulty !== 'easy') {
-      const diffs: Difficulty[] = ['easy', 'medium', 'hard'];
-      const idx = diffs.indexOf(difficulty);
-      effectiveDiff = diffs[Math.max(0, idx - 1)];
+      const idx = DIFFICULTY_ORDER.indexOf(difficulty);
+      effectiveDiff = DIFFICULTY_ORDER[Math.max(0, idx - 1)];
       hiddenReduction = true;
     }
 
@@ -659,10 +658,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const mode = state.gameMode || 'endless';
     let diff = state.difficulty || 'easy';
 
-    if (mode === 'endless' && state.endlessAutoLevelUp && diff !== 'hard') {
-      const diffs: Difficulty[] = ['easy', 'medium', 'hard'];
-      const idx = diffs.indexOf(diff);
-      diff = diffs[Math.min(idx + 1, 2)];
+    if (mode === 'endless' && state.endlessAutoLevelUp && diff !== 'extreme') {
+      const idx = DIFFICULTY_ORDER.indexOf(diff);
+      diff = DIFFICULTY_ORDER[Math.min(idx + 1, DIFFICULTY_ORDER.length - 1)];
     }
 
     loadSave().then(save => startGame(diff, mode, save));

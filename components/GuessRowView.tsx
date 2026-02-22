@@ -34,9 +34,11 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
   const pulseOpacity = useSharedValue(0);
 
   const availableWidth = Math.min(width, 420) - 24;
-  const feedbackWidth = codeLength * 16 + 16;
+  const pegGap = codeLength >= 7 ? 4 : 8;
+  const pinSize = codeLength >= 7 ? 10 : 12;
+  const feedbackWidth = codeLength * (pinSize + 4) + 12;
   const pegAreaWidth = availableWidth - feedbackWidth;
-  const pegSize = Math.min(Math.floor(pegAreaWidth / codeLength) - 8, 44);
+  const pegSize = Math.min(Math.floor((pegAreaWidth - pegGap * (codeLength - 1)) / codeLength), 44);
 
   useEffect(() => {
     if (isCurrent && phase === 'playing') {
@@ -109,7 +111,7 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
       isCurrent && isLastAttempt && pulseStyle,
       rowEmpty && styles.rowDimmed,
     ]}>
-      <View style={styles.pegsContainer}>
+      <View style={[styles.pegsContainer, { gap: pegGap }]}>
         {row.pegs.map((peg, pi) => (
           <ColorPeg
             key={pi}
@@ -126,7 +128,7 @@ export default function GuessRowView({ row, rowIndex, isCurrent, isShaking, isRe
         {row.feedback ? (
           <FeedbackPins
             feedback={row.feedback}
-            pinSize={12}
+            pinSize={pinSize}
             animated={isRevealing}
           />
         ) : null}
@@ -157,7 +159,6 @@ const styles = StyleSheet.create({
   pegsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 8,
   },
   feedbackContainer: {
     flexDirection: 'row',

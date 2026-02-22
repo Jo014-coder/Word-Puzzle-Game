@@ -45,6 +45,7 @@ const Colors = {
     easy: '#22C55E',
     medium: '#EAB308',
     hard: '#EF4444',
+    extreme: '#A855F7',
   } as Record<string, string>,
 };
 

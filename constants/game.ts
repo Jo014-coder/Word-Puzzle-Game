@@ -1,4 +1,4 @@
-export type Difficulty = 'easy' | 'medium' | 'hard';
+export type Difficulty = 'easy' | 'medium' | 'hard' | 'extreme';
 export type GameMode = 'daily' | 'endless' | 'timeAttack';
 
 export interface DifficultyConfig {
@@ -27,7 +27,7 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     maxAttempts: 6,
     colorCount: 6,
     hintTokens: 0,
-    description: '5 pegs  |  6 attempts  |  no hints',
+    description: '5 pegs  |  6 attempts',
     hasFakeFeedback: false,
   },
   hard: {
@@ -39,7 +39,18 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     description: '6 pegs  |  5 attempts',
     hasFakeFeedback: false,
   },
+  extreme: {
+    label: 'Extreme',
+    codeLength: 7,
+    maxAttempts: 4,
+    colorCount: 6,
+    hintTokens: 0,
+    description: '7 pegs  |  4 attempts  |  1 fake pin',
+    hasFakeFeedback: true,
+  },
 };
+
+export const DIFFICULTY_ORDER: Difficulty[] = ['easy', 'medium', 'hard', 'extreme'];
 
 export const WIN_MESSAGES: Record<number, string> = {
   0: 'Genius!',

@@ -185,7 +185,10 @@ export default function HomeScreen() {
           <View style={styles.diffRow}>
             <DifficultyButton difficulty="easy" onPress={() => selectDifficulty('easy')} delay={100} />
             <DifficultyButton difficulty="medium" onPress={() => selectDifficulty('medium')} delay={200} />
+          </View>
+          <View style={[styles.diffRow, { marginTop: 10 }]}>
             <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={300} />
+            <DifficultyButton difficulty="extreme" onPress={() => selectDifficulty('extreme')} delay={400} />
           </View>
         </View>
       )}
