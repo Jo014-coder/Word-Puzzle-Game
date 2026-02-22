@@ -1,49 +1,51 @@
 const Colors = {
-  background: '#0F1119',
-  backgroundLight: '#181B2A',
-  surface: '#1E2235',
-  surfaceLight: '#272B40',
-  border: '#2E3348',
-  borderLight: '#3D4260',
+  background: '#111827',
+  backgroundLight: '#1a2235',
+  surface: '#1E2937',
+  surfaceLight: '#283548',
+  border: '#374151',
+  borderLight: '#4B5563',
 
   textPrimary: '#FFFFFF',
-  textSecondary: '#9CA3C0',
-  textMuted: '#5C6080',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
 
   accent: '#6C5CE7',
   accentGlow: '#A29BFE',
 
-  correct: '#00D68F',
-  misplaced: '#FFB020',
-  wrong: '#3D4260',
+  correctPeg: '#16A34A',
+  misplacedPeg: '#CA8A04',
+  wrongPeg: '#374151',
 
   coin: '#FFD93D',
   streak: '#FF6B6B',
   shield: '#A29BFE',
 
-  overlay: 'rgba(0,0,0,0.75)',
+  overlay: 'rgba(0,0,0,0.8)',
 
   pegs: [
-    '#FF4757',
-    '#3742FA',
-    '#2ED573',
-    '#FFA502',
-    '#A55EEA',
-    '#1E90FF',
-    '#FF6B81',
-    '#ECCC68',
+    '#EF4444',
+    '#3B82F6',
+    '#EAB308',
+    '#22C55E',
+    '#A855F7',
+    '#F97316',
   ] as string[],
 
   pegNames: [
     'Red',
     'Blue',
-    'Green',
-    'Orange',
-    'Purple',
-    'Cyan',
-    'Pink',
     'Yellow',
+    'Green',
+    'Purple',
+    'Orange',
   ] as string[],
+
+  difficultyColors: {
+    easy: '#22C55E',
+    medium: '#EAB308',
+    hard: '#EF4444',
+  } as Record<string, string>,
 };
 
 export default Colors;

@@ -1,0 +1,182 @@
+Here is the complete, final prompt. Copy everything between the lines and paste it into your existing Replit project AI chat:
+
+Build a complete mobile-first Mastermind colour-guessing game called Griddl in a single index.html file using only HTML, CSS and vanilla JavaScript. No libraries, no frameworks, no external dependencies whatsoever.
+
+CORE CONCEPT
+The player must guess a secret sequence of colours. After each guess, they receive peg feedback showing which colours are correct and in the right position, which are correct but in the wrong position, and which are not in the code at all. The game has a streak system, reward economy, and addictive psychological hooks.
+
+VISUAL DESIGN — MASTERMIND STYLE
+
+Background: #111827 (deep navy)
+
+Font: system-ui, bold, white
+
+Colour pegs are large circles (48px diameter) with a glossy inner highlight effect using CSS radial-gradient to look like real Mastermind marbles
+
+The 6 available colours are: Red #EF4444, Blue #3B82F6, Yellow #EAB308, Green #22C55E, Purple #A855F7, Orange #F97316
+
+Feedback pegs (small, 16px): Green #16A34A = right colour right position, Yellow #CA8A04 = right colour wrong position, Grey #374151 = not in code
+
+Each guess row shows: the colour pegs the player chose (left), and the feedback mini-pegs (right) in a 2×2 or 2×3 grid depending on code length
+
+Active row has a subtle white glow border
+
+Animate feedback pegs appearing one by one with a 150ms stagger and a pop scale animation
+
+Confetti burst on win using CSS canvas particles
+
+Row shake animation on invalid submission
+
+Toast notifications slide in from top, stay 2 seconds, fade out
+
+Last attempt row pulses with a subtle red glow to create pressure
+
+DIFFICULTY LEVELS
+
+Easy: code length 4, 6 colours available, 8 attempts, colours can repeat, 1 hint token given
+
+Medium: code length 5, 6 colours available, 6 attempts, colours can repeat, no hints
+
+Hard: code length 6, 6 colours available, 5 attempts, colours can repeat, once per game one random correct feedback peg is shown as yellow instead of green (fake feedback twist, never revealed to player)
+
+GAME SCREENS
+
+Screen 1 — Home/Mode Select:
+
+Large "Griddl" title with a subtle shimmer animation
+
+Tagline: "Crack the colour code"
+
+Three mode buttons: Daily Challenge, Endless Mode, Time Attack
+
+Three difficulty buttons: Easy (green), Medium (yellow), Hard (red)
+
+Show current streak and coins at top
+
+Screen 2 — Game Screen:
+
+Top bar: back arrow (left), streak fire 🔥 + number (centre-left), coins 🪙 (centre-right), difficulty badge (right)
+
+Attempts remaining shown as a subtle progress bar below top bar
+
+Centre: guess grid showing all rows, previous guesses filled with colour pegs and feedback, current active row highlighted
+
+Bottom: colour palette — 6 large circular colour buttons the player taps to add to their current guess, a Delete button, and a Submit button
+
+Current guess shown as pegs in the active row, empty slots shown as dark circles with dashed border
+
+Screen 3 — Win/Lose overlay:
+
+Semi-transparent dark overlay
+
+Win: confetti, large emoji, message based on attempt number
+
+Lose: reveal the secret code visually as coloured pegs
+
+Show coins earned, streak count, any milestone reward unlocked
+
+Two buttons: Play Again and Change Difficulty
+
+GAME LOGIC
+
+Secret code generation:
+
+Randomly pick colours (with repetition allowed) for the current code length
+
+Feedback algorithm (two-pass Mastermind):
+
+Pass 1: compare each position, if colour and position both match mark as green, consume that colour from the secret pool
+
+Pass 2: for remaining unmatched guess pegs, check if the colour exists anywhere in the remaining secret pool, if yes mark as yellow and consume it, otherwise mark as grey
+
+Hard mode twist: after computing feedback, if at least one green peg exists, randomly pick one green and secretly change it to yellow in the display only — store this in a variable so it only happens once per game
+
+Validation: player must fill all slots before submitting, otherwise shake row and show toast "Fill all slots first"
+
+GAME MODES
+
+Daily Challenge:
+
+Generate the secret code using today's date as a seed so everyone gets the same code
+
+Player gets one attempt per day per difficulty
+
+Streak only counts if played every day
+
+Show a share result button after game ends that copies an emoji grid to clipboard
+
+Endless Mode:
+
+Infinite games, streak carries over between games
+
+Every 3 wins, difficulty automatically increases by one level and show toast "Level up! 🔥"
+
+If already on Hard, give double coins instead
+
+Time Attack:
+
+60 second countdown shown as a shrinking progress bar at the top
+
+Player solves as many codes as possible
+
+Each correct guess adds 8 seconds to the timer
+
+Combo multiplier: solving within 3 guesses gives 2x coins, within 2 guesses gives 3x coins
+
+Show final score screen with codes solved and coins earned
+
+STREAK SYSTEM
+
+Win → streak +1, Lose → streak resets to 0 (unless shield active)
+
+Streak milestones:
+
+3: show toast "+50 bonus coins! 🪙" and add 50 coins
+
+5: show toast "Hint token earned! 💡" and add 1 hint token
+
+7: show toast "Gold pegs unlocked! ✨" and apply a gold shimmer effect to peg borders
+
+10: show toast "Streak Shield unlocked! 🛡️" and set streakShield to true
+
+15: show toast "Obsidian theme unlocked! 🎨" and apply a dark obsidian colour scheme
+
+Streak Shield: if streakShield is true and player loses, set it to false, keep streak unchanged, show toast "Your Streak Shield saved you! 🛡️"
+
+REWARD ECONOMY
+
+Coins earned per win: 20 + (streak × 5)
+
+Hint token: reveals one correct colour peg in the secret code without its position
+
+Daily login bonus: add 10 coins on first game of the day (check using localStorage date)
+
+Save to localStorage: streak, coins, hintTokens, streakShield, lastPlayedDate, dailyStreak
+
+ADDICTIVE HOOKS
+
+Near-miss feedback: after each non-winning guess count green pegs. If code length minus green count equals 1 show toast "So close! 😱". If equals 2 show "Almost there! 🔥"
+
+Last attempt pressure: when on the final attempt, the active row border pulses red and a subtle heartbeat sound is played using the Web Audio API (a simple low beep, no external file needed)
+
+Win micro-celebration: screen flash, confetti burst, peg bounce animation, coins counter animates upward
+
+Smart hidden difficulty: track consecutive losses in a variable. If player has lost 3 games in a row, secretly reduce code length by 1 for the next game only, then restore it. Never tell the player
+
+Progress bar showing attempts used fills up and turns red as attempts run out
+
+Coins counter in top bar animates with a +XX floating number every time coins are earned
+
+TECHNICAL REQUIREMENTS
+
+Fully responsive, works perfectly on 390px wide mobile screen
+
+On-screen colour buttons must be large enough for easy tapping (minimum 56px)
+
+All game state in a single JavaScript object called gameState
+
+All localStorage operations in save() and load() functions
+
+Clean modular functions: generateCode(), submitGuess(), computeFeedback(), renderGrid(), renderPalette(), checkWin(), handleWin(), handleLoss(), checkStreakMilestone(), showToast(), triggerConfetti()
+
+No alerts, no prompts — everything uses the toast system or overlay screens
