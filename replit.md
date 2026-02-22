@@ -34,10 +34,16 @@ Preferred communication style: Simple, everyday language.
 - **Note**: The database is provisioned but minimally used - game state is primarily client-side via AsyncStorage
 
 ### Game Architecture
-- **Difficulty configs** defined in `constants/game.ts` control code length (4-6 pegs), max attempts (5-8), available colors (6), hint tokens, and fake feedback (Hard mode)
-- **Feedback algorithm**: Two-pass Mastermind evaluation - Pass 1 marks exact matches, Pass 2 marks misplaced colors without double-counting
-- **Game modes**: Daily Challenge (seeded by date), Endless Mode (continuous play), Time Attack (timed solving)
-- **Reward system**: Coins earned on wins (20 + streak multiplier), streak tracking, streak shields, hint tokens, unlockable gold pegs and obsidian theme
+- **Difficulty configs** defined in `constants/game.ts` control code length (4-7 pegs), max attempts (4-8), available colors (6), hint tokens, and fake feedback (Extreme mode only)
+- **Difficulties**: Easy (4 pegs/8 attempts/1 hint), Medium (5/6), Hard (6/5), Extreme (7/4 + 1 fake feedback pin)
+- **Feedback algorithm**: Two-pass Mastermind evaluation - Pass 1 marks exact matches, Pass 2 marks misplaced colors without double-counting. Returns per-position green/yellow/grey array.
+- **Game modes**: Daily Challenge (Medium default, Hard unlockable at streak 10, auto-starts), Endless Mode (training/practice, auto-levels every 3 wins), Time Attack (60s timer, +8s per win, board auto-clears after each solve)
+- **Reward system**: Coins (20 + streak*5), streak milestones (3: +50 coins, 5: hint token, 7: gold pegs, 10: shield + daily Hard unlock, 15: obsidian theme)
+- **Hidden difficulty reduction**: After 3 consecutive losses (2 for Time Attack), next game drops one difficulty level
+- **Streak Shield**: Protects one loss from breaking the streak
+- **Near-miss feedback**: "So close!" when 1 peg away, "Almost there!" when 2 away with yellows
+- **Last attempt pulse**: Red border pulse animation on the final attempt row
+- **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone (dailyHardUnlocked saved in AsyncStorage)
 
 ### Build & Deploy
 - **Development**: Two processes - `expo:dev` for the mobile client, `server:dev` for the Express backend
