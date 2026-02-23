@@ -136,7 +136,7 @@ function DailyDiffToggle({ onSelect }: { onSelect: (d: Difficulty) => void }) {
         style={({ pressed }) => [styles.dailyTogglePill, { opacity: pressed ? 0.7 : 1 }]}
       >
         <View style={[styles.dailyToggleDot, { backgroundColor: Colors.difficultyColors.medium }]} />
-        <Text style={[styles.dailyToggleText, { color: Colors.difficultyColors.medium }]}>Medium</Text>
+        <Text style={[styles.dailyToggleText, { color: Colors.difficultyColors.medium }]}>Standard</Text>
       </Pressable>
       <Pressable
         onPress={() => onSelect('hard')}
