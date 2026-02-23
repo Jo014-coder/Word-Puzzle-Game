@@ -2,7 +2,8 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Platform, Share } from 'react-native';
-import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS } from '@/constants/game';
+import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS, SHOP_ITEMS } from '@/constants/game';
+import Colors from '@/constants/colors';
 
 export interface PegSlot {
   colorIndex: number | null;
@@ -41,6 +42,9 @@ interface SaveData {
   dailyHardUnlocked: boolean;
   timeAttackLosses: number;
   lastDailyGame: DailyGameResult | null;
+  ownedItems: string[];
+  activePinStyle: string;
+  activeBackground: string;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -59,9 +63,12 @@ const DEFAULT_SAVE: SaveData = {
   dailyHardUnlocked: false,
   timeAttackLosses: 0,
   lastDailyGame: null,
+  ownedItems: [],
+  activePinStyle: 'default',
+  activeBackground: 'default',
 };
 
-export type Screen = 'home' | 'game' | 'result';
+export type Screen = 'home' | 'game' | 'result' | 'shop';
 
 export interface GameState {
   screen: Screen;
@@ -104,6 +111,9 @@ export interface GameState {
   timeAttackNextRows: GuessRow[] | null;
   lastDailyGame: DailyGameResult | null;
   viewingDaily: boolean;
+  ownedItems: string[];
+  activePinStyle: string;
+  activeBackground: string;
 }
 
 interface GameContextValue extends GameState {
@@ -122,6 +132,8 @@ interface GameContextValue extends GameState {
   getConfig: () => typeof DIFFICULTY_CONFIG.easy;
   shareDaily: () => void;
   viewLastDaily: () => void;
+  openShop: () => void;
+  purchaseItem: (itemId: string) => void;
 }
 
 const STORAGE_KEY = 'griddl_v2_save';
@@ -279,6 +291,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     timeAttackNextRows: null,
     lastDailyGame: null,
     viewingDaily: false,
+    ownedItems: [],
+    activePinStyle: 'default',
+    activeBackground: 'default',
   });
 
   useEffect(() => {
@@ -303,6 +318,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dailyHardUnlocked: save.dailyHardUnlocked || false,
         timeAttackLosses: save.timeAttackLosses || 0,
         lastDailyGame: save.lastDailyGame || null,
+        ownedItems: save.ownedItems || [],
+        activePinStyle: save.activePinStyle || 'default',
+        activeBackground: save.activeBackground || 'default',
       }));
 
       if (!claimedToday) {
@@ -453,6 +471,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     haptic('medium');
     const mode = state.gameMode || 'endless';
 
+    if (d === 'extreme' && !state.ownedItems.includes('extreme')) {
+      setState(prev => ({
+        ...prev,
+        toastMessage: 'Unlock Extreme Mode in the Shop!',
+        toastType: 'info',
+      }));
+      return;
+    }
+
     if (mode === 'daily') {
       const todayKey = getTodayKey();
       const dailyKey = `${todayKey}_${d}`;
@@ -467,7 +494,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     loadSave().then(save => startGame(d, mode, save));
-  }, [state.gameMode, state.dailyPlayed, startGame]);
+  }, [state.gameMode, state.dailyPlayed, state.ownedItems, startGame]);
 
   const selectSlot = useCallback((slotIndex: number) => {
     haptic('light');
@@ -834,9 +861,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
     return { ...prev, revealingRow: null };
   }), []);
 
-  const PEG_EMOJIS = ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'];
-  const FEEDBACK_MAP = { green: '🟩', yellow: '🟨', grey: '⬛' };
-
   const shareDaily = useCallback(() => {
     const game = state.lastDailyGame;
     if (!game && state.gameMode !== 'daily') return;
@@ -847,10 +871,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const config = DIFFICULTY_CONFIG[diff];
     const attempts = won ? state.currentRow + 1 : 'X';
 
-    let text = `Griddl ${getTodayKey()} ${attempts}/${config.maxAttempts}\n\n`;
-    for (const row of rows) {
-      if (!row.submitted || !row.feedback) continue;
-      text += row.feedback.map(f => FEEDBACK_MAP[f]).join('') + '\n';
+    let text = `🎯 Griddl · ${getTodayKey()}\nSolved in ${attempts}/${config.maxAttempts}\n\n`;
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri];
+      if (!row.submitted) continue;
+      const pegLine = row.pegs.map(p => p.colorIndex !== null ? Colors.pegEmojis[p.colorIndex] : '⚫').join('');
+      const isWinRow = won && ri === (typeof attempts === 'number' ? attempts - 1 : -1);
+      text += pegLine + (isWinRow ? ' ✅' : '') + '\n';
     }
 
     if (Platform.OS === 'web') {
@@ -881,6 +908,73 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }));
   }, [state.lastDailyGame]);
 
+  const openShop = useCallback(() => {
+    haptic('light');
+    setState(prev => ({ ...prev, screen: 'shop' as Screen }));
+  }, []);
+
+  const purchaseItem = useCallback((itemId: string) => {
+    haptic('medium');
+    const item = SHOP_ITEMS.find(i => i.id === itemId);
+    if (!item) return;
+
+    setState(prev => {
+      const isConsumable = item.category === 'consumable';
+      const alreadyOwned = prev.ownedItems.includes(itemId);
+
+      if (!isConsumable && alreadyOwned) {
+        if (item.category === 'pins') {
+          const newStyle = prev.activePinStyle === itemId ? 'default' : itemId;
+          persistSave({ activePinStyle: newStyle });
+          return { ...prev, activePinStyle: newStyle, toastMessage: newStyle === 'default' ? 'Default pins equipped' : `${item.name} equipped!`, toastType: 'success' as const };
+        }
+        if (item.category === 'background') {
+          const newBg = prev.activeBackground === itemId ? 'default' : itemId;
+          persistSave({ activeBackground: newBg });
+          return { ...prev, activeBackground: newBg, toastMessage: newBg === 'default' ? 'Default background equipped' : `${item.name} equipped!`, toastType: 'success' as const };
+        }
+        return prev;
+      }
+
+      if (prev.coins < item.price) {
+        return { ...prev, toastMessage: 'Not enough coins!', toastType: 'error' as const };
+      }
+
+      const newCoins = prev.coins - item.price;
+      let updates: Partial<GameState> = { coins: newCoins };
+      let saveUpdates: Partial<SaveData> = { coins: newCoins };
+
+      if (isConsumable) {
+        if (itemId === 'hint') {
+          updates.hintTokens = prev.hintTokens + 1;
+          saveUpdates.hintTokens = prev.hintTokens + 1;
+        } else if (itemId === 'shield') {
+          updates.streakShield = true;
+          saveUpdates.streakShield = true;
+        }
+        updates.toastMessage = `${item.name} purchased!`;
+        updates.toastType = 'success' as const;
+      } else {
+        const newOwned = [...prev.ownedItems, itemId];
+        updates.ownedItems = newOwned;
+        saveUpdates.ownedItems = newOwned;
+
+        if (item.category === 'pins') {
+          updates.activePinStyle = itemId;
+          saveUpdates.activePinStyle = itemId;
+        } else if (item.category === 'background') {
+          updates.activeBackground = itemId;
+          saveUpdates.activeBackground = itemId;
+        }
+        updates.toastMessage = `${item.name} unlocked!`;
+        updates.toastType = 'milestone' as const;
+      }
+
+      persistSave(saveUpdates);
+      return { ...prev, ...updates };
+    });
+  }, []);
+
   const value = useMemo(() => ({
     ...state,
     selectMode,
@@ -898,7 +992,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     getConfig,
     shareDaily,
     viewLastDaily,
-  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig, shareDaily, viewLastDaily]);
+    openShop,
+    purchaseItem,
+  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig, shareDaily, viewLastDaily, openShop, purchaseItem]);
 
   return (
     <GameContext.Provider value={value}>

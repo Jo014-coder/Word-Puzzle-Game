@@ -65,3 +65,31 @@ export const WIN_MESSAGES: Record<number, string> = {
 
 export const TIME_ATTACK_DURATION = 60;
 export const TIME_ATTACK_BONUS = 8;
+
+export interface ShopItem {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  category: 'consumable' | 'unlock' | 'pins' | 'background';
+  icon: string;
+}
+
+export const SHOP_ITEMS: ShopItem[] = [
+  { id: 'hint', name: 'Hint Token', description: 'Reveals one correct peg', price: 30, category: 'consumable', icon: 'bulb-outline' },
+  { id: 'shield', name: 'Streak Shield', description: 'Protects your streak once', price: 40, category: 'consumable', icon: 'shield-checkmark-outline' },
+  { id: 'extreme', name: 'Extreme Mode', description: '7 pegs · 4 tries · 1 fake pin', price: 250, category: 'unlock', icon: 'skull-outline' },
+  { id: 'pins_neon', name: 'Neon Glow', description: 'Glowing neon feedback pins', price: 120, category: 'pins', icon: 'flash-outline' },
+  { id: 'pins_crystal', name: 'Crystal', description: 'Sparkling crystal pins', price: 180, category: 'pins', icon: 'diamond-outline' },
+  { id: 'bg_midnight', name: 'Midnight', description: 'Deep dark space', price: 80, category: 'background', icon: 'moon-outline' },
+  { id: 'bg_ocean', name: 'Deep Ocean', description: 'Ocean blue depths', price: 80, category: 'background', icon: 'water-outline' },
+  { id: 'bg_nebula', name: 'Nebula', description: 'Cosmic purple nebula', price: 100, category: 'background', icon: 'planet-outline' },
+  { id: 'bg_ember', name: 'Ember', description: 'Warm ember glow', price: 80, category: 'background', icon: 'flame-outline' },
+];
+
+export const SHOP_CATEGORIES = [
+  { key: 'consumable', label: 'CONSUMABLES' },
+  { key: 'unlock', label: 'UNLOCKS' },
+  { key: 'pins', label: 'PIN STYLES' },
+  { key: 'background', label: 'BACKGROUNDS' },
+] as const;

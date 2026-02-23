@@ -41,6 +41,16 @@ const Colors = {
     'Orange',
   ] as string[],
 
+  pegEmojis: ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'] as string[],
+
+  backgroundThemes: {
+    default: '#111827',
+    midnight: '#080C18',
+    ocean: '#0A1628',
+    nebula: '#1A0A2E',
+    ember: '#1A0F0A',
+  } as Record<string, string>,
+
   difficultyColors: {
     easy: '#22C55E',
     medium: '#EAB308',

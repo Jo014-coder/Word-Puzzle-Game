@@ -9,11 +9,12 @@ import Animated, {
   Easing,
   withDelay,
 } from 'react-native-reanimated';
-import { useEffect } from 'react';
+import { useEffect, ReactNode } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
 import { Difficulty, DIFFICULTY_CONFIG, GameMode } from '@/constants/game';
+import Toast from './Toast';
 
 function ShimmerTitle() {
   const shimmer = useSharedValue(0);
@@ -40,7 +41,7 @@ function ShimmerTitle() {
   );
 }
 
-function ModeButton({ mode, icon, label, description, selected, onPress, delay }: {
+function ModeButton({ mode, icon, label, description, selected, onPress, delay, children }: {
   mode: GameMode;
   icon: string;
   label: string;
@@ -48,6 +49,7 @@ function ModeButton({ mode, icon, label, description, selected, onPress, delay }
   selected: boolean;
   onPress: () => void;
   delay: number;
+  children?: ReactNode;
 }) {
   const scale = useSharedValue(0);
 
@@ -79,18 +81,20 @@ function ModeButton({ mode, icon, label, description, selected, onPress, delay }
           <Text style={[styles.modeLabel, selected && styles.modeLabelSelected]}>{label}</Text>
         </View>
         <Text style={styles.modeDesc}>{description}</Text>
+        {children}
       </Pressable>
     </Animated.View>
   );
 }
 
-function DifficultyButton({ difficulty, onPress, delay }: {
+function DifficultyButton({ difficulty, onPress, delay, locked }: {
   difficulty: Difficulty;
   onPress: () => void;
   delay: number;
+  locked?: boolean;
 }) {
   const config = DIFFICULTY_CONFIG[difficulty];
-  const color = Colors.difficultyColors[difficulty];
+  const color = locked ? Colors.textMuted : Colors.difficultyColors[difficulty];
   const scale = useSharedValue(0);
 
   useEffect(() => {
@@ -109,18 +113,44 @@ function DifficultyButton({ difficulty, onPress, delay }: {
         style={({ pressed }) => [
           styles.diffButton,
           { borderColor: color, opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.95 : 1 }] },
+          locked && styles.diffButtonLocked,
         ]}
       >
-        <View style={[styles.diffDot, { backgroundColor: color }]} />
+        {locked ? (
+          <Ionicons name="lock-closed" size={14} color={Colors.textMuted} style={{ marginBottom: 6 }} />
+        ) : (
+          <View style={[styles.diffDot, { backgroundColor: color }]} />
+        )}
         <Text style={[styles.diffLabel, { color }]}>{config.label}</Text>
-        <Text style={styles.diffDesc}>{config.description}</Text>
+        <Text style={styles.diffDesc}>{locked ? 'Shop unlock' : config.description}</Text>
       </Pressable>
     </Animated.View>
   );
 }
 
+function DailyDiffToggle({ onSelect }: { onSelect: (d: Difficulty) => void }) {
+  return (
+    <View style={styles.dailyToggle}>
+      <Pressable
+        onPress={() => onSelect('medium')}
+        style={({ pressed }) => [styles.dailyTogglePill, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View style={[styles.dailyToggleDot, { backgroundColor: Colors.difficultyColors.medium }]} />
+        <Text style={[styles.dailyToggleText, { color: Colors.difficultyColors.medium }]}>Medium</Text>
+      </Pressable>
+      <Pressable
+        onPress={() => onSelect('hard')}
+        style={({ pressed }) => [styles.dailyTogglePill, { opacity: pressed ? 0.7 : 1 }]}
+      >
+        <View style={[styles.dailyToggleDot, { backgroundColor: Colors.difficultyColors.hard }]} />
+        <Text style={[styles.dailyToggleText, { color: Colors.difficultyColors.hard }]}>Hard</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 export default function HomeScreen() {
-  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame } = useGame();
+  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame, openShop, ownedItems, toastMessage, toastType, clearToast } = useGame();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === 'web' ? 67 : 0;
 
@@ -128,6 +158,7 @@ export default function HomeScreen() {
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
   const dailyAlreadyPlayed = !!(dailyPlayed[`${todayKey}_medium`] || dailyPlayed[`${todayKey}_hard`]);
   const hasDailyResult = !!(lastDailyGame && lastDailyGame.date === todayKey);
+  const extremeUnlocked = ownedItems.includes('extreme');
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTop + 16 }]}>
@@ -136,10 +167,11 @@ export default function HomeScreen() {
           <Ionicons name="flame" size={18} color={Colors.streak} />
           <Text style={styles.statValue}>{streak}</Text>
         </View>
-        <View style={styles.statItem}>
+        <Pressable onPress={openShop} style={styles.statItem} hitSlop={8}>
           <MaterialCommunityIcons name="circle-multiple" size={18} color={Colors.coin} />
           <Text style={styles.statValue}>{coins}</Text>
-        </View>
+          <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
+        </Pressable>
         {hintTokens > 0 && (
           <View style={styles.statItem}>
             <Ionicons name="bulb" size={18} color="#06B6D4" />
@@ -159,11 +191,15 @@ export default function HomeScreen() {
           mode="daily"
           icon="calendar-today"
           label="Daily Challenge"
-          description={dailyAlreadyPlayed ? "Played! Tap to view your result." : dailyHardUnlocked ? "Choose your challenge. One try per day." : "One try per day. Can you crack it?"}
+          description={dailyAlreadyPlayed ? "Played! Tap to view your result." : "One try per day. Can you crack it?"}
           selected={gameMode === 'daily'}
           onPress={() => selectMode('daily')}
           delay={100}
-        />
+        >
+          {gameMode === 'daily' && dailyHardUnlocked && !dailyAlreadyPlayed && (
+            <DailyDiffToggle onSelect={selectDifficulty} />
+          )}
+        </ModeButton>
         <ModeButton
           mode="endless"
           icon="infinity"
@@ -184,16 +220,6 @@ export default function HomeScreen() {
         />
       </View>
 
-      {gameMode === 'daily' && dailyHardUnlocked && (
-        <View style={styles.diffSection}>
-          <Text style={styles.sectionLabel}>DAILY DIFFICULTY</Text>
-          <View style={styles.diffRow}>
-            <DifficultyButton difficulty="medium" onPress={() => selectDifficulty('medium')} delay={100} />
-            <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={200} />
-          </View>
-        </View>
-      )}
-
       {gameMode && gameMode !== 'daily' && (
         <View style={styles.diffSection}>
           <Text style={styles.sectionLabel}>DIFFICULTY</Text>
@@ -203,7 +229,7 @@ export default function HomeScreen() {
           </View>
           <View style={[styles.diffRow, { marginTop: 10 }]}>
             <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={300} />
-            <DifficultyButton difficulty="extreme" onPress={() => selectDifficulty('extreme')} delay={400} />
+            <DifficultyButton difficulty="extreme" onPress={() => selectDifficulty('extreme')} delay={400} locked={!extremeUnlocked} />
           </View>
         </View>
       )}
@@ -215,6 +241,15 @@ export default function HomeScreen() {
           </Text>
         </View>
       )}
+
+      <Pressable onPress={openShop} style={styles.shopButton}>
+        <Ionicons name="storefront-outline" size={18} color={Colors.accentGlow} />
+        <Text style={styles.shopButtonText}>Shop</Text>
+      </Pressable>
+
+      {toastMessage && (
+        <Toast message={toastMessage} type={toastType} onHide={clearToast} />
+      )}
     </View>
   );
 }
@@ -222,7 +257,7 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
     paddingHorizontal: 20,
   },
   statsRow: {
@@ -317,6 +352,12 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1.5,
     alignItems: 'center',
+    minHeight: 88,
+    justifyContent: 'center',
+  },
+  diffButtonLocked: {
+    backgroundColor: 'rgba(30,41,55,0.6)',
+    borderStyle: 'dashed' as any,
   },
   diffDot: {
     width: 12,
@@ -337,6 +378,31 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_400Regular',
     lineHeight: 13,
   },
+  dailyToggle: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    justifyContent: 'center',
+  },
+  dailyTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  dailyToggleDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  dailyToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    fontFamily: 'Inter_600SemiBold',
+  },
   miniStats: {
     alignItems: 'center',
     marginTop: 8,
@@ -345,5 +411,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: Colors.textMuted,
     fontFamily: 'Inter_400Regular',
+  },
+  shopButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 10,
+  },
+  shopButtonText: {
+    fontSize: 14,
+    color: Colors.accentGlow,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
   },
 });

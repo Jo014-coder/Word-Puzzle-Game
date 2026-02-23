@@ -4,16 +4,19 @@ import { useGame } from '@/contexts/GameContext';
 import HomeScreen from '@/components/HomeScreen';
 import GameScreen from '@/components/GameScreen';
 import ResultScreen from '@/components/ResultScreen';
+import ShopScreen from '@/components/ShopScreen';
 
 export default function Index() {
-  const { screen } = useGame();
+  const { screen, activeBackground } = useGame();
+  const bg = Colors.backgroundThemes[activeBackground] || Colors.background;
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.background} />
+    <View style={[styles.container, { backgroundColor: bg }]}>
+      <StatusBar barStyle="light-content" backgroundColor={bg} />
       {screen === 'home' && <HomeScreen />}
       {screen === 'game' && <GameScreen />}
       {screen === 'result' && <ResultScreen />}
+      {screen === 'shop' && <ShopScreen />}
     </View>
   );
 }

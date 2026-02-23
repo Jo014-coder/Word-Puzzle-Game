@@ -2,7 +2,7 @@
 
 ## Overview
 
-Griddl is a mobile-first Mastermind-style color-guessing puzzle game built with React Native (Expo) and an Express backend. Players guess a secret sequence of colored pegs, receiving feedback on correct colors and positions after each attempt. The game features three difficulty levels (Easy, Medium, Hard), three game modes (Daily Challenge, Endless, Time Attack), and a progression system with streaks, coins, hints, and streak shields. All game state is persisted locally via AsyncStorage.
+Griddl is a mobile-first Mastermind-style color-guessing puzzle game built with React Native (Expo) and an Express backend. Players guess a secret sequence of colored pegs, receiving feedback on correct colors and positions after each attempt. The game features four difficulty levels (Easy, Medium, Hard, Extreme), three game modes (Daily Challenge, Endless, Time Attack), a progression system with streaks, coins, hints, and streak shields, and a coin shop for purchasing consumables, unlocks, and cosmetics. All game state is persisted locally via AsyncStorage.
 
 ## User Preferences
 
@@ -18,7 +18,7 @@ Preferred communication style: Simple, everyday language.
 - **Data Persistence**: AsyncStorage for saving streak, coins, hint tokens, streak shields, and other progression data locally on device
 - **Data Fetching**: TanStack React Query with a custom API client (`lib/query-client.ts`) configured for the Express backend, though the game currently runs most logic client-side
 - **Fonts**: Inter font family (Regular, SemiBold, Bold) loaded via @expo-google-fonts
-- **UI Components**: Custom components for ColorPeg (with glossy gradient effect), FeedbackPins (animated reveal), GuessRowView, Toast notifications, Confetti particles, HomeScreen, GameScreen, ResultScreen
+- **UI Components**: Custom components for ColorPeg (with glossy gradient effect), FeedbackPins (animated reveal), GuessRowView, Toast notifications, Confetti particles, HomeScreen, GameScreen, ResultScreen, ShopScreen
 
 ### Backend (Express)
 - **Runtime**: Node.js with Express 5
@@ -35,7 +35,7 @@ Preferred communication style: Simple, everyday language.
 
 ### Game Architecture
 - **Difficulty configs** defined in `constants/game.ts` control code length (4-7 pegs), max attempts (4-8), available colors (6), hint tokens, and fake feedback (Extreme mode only)
-- **Difficulties**: Easy (4 pegs/8 attempts/1 hint), Medium (5/6), Hard (6/5), Extreme (7/4 + 1 fake feedback pin)
+- **Difficulties**: Easy (4 pegs/8 attempts/1 hint), Medium (5/6), Hard (6/5), Extreme (7/4 + 1 fake feedback pin, locked by default - purchasable in shop)
 - **Feedback algorithm**: Two-pass Mastermind evaluation - Pass 1 marks exact matches, Pass 2 marks misplaced colors without double-counting. Returns per-position green/yellow/grey array.
 - **Game modes**: Daily Challenge (Medium default, Hard unlockable at streak 10, auto-starts), Endless Mode (training/practice, auto-levels every 3 wins), Time Attack (60s timer, +8s per win, board auto-clears after each solve)
 - **Reward system**: Coins (20 + streak*5), streak milestones (3: +50 coins, 5: hint token, 7: gold pegs, 10: shield + daily Hard unlock, 15: obsidian theme)
@@ -43,7 +43,9 @@ Preferred communication style: Simple, everyday language.
 - **Streak Shield**: Protects one loss from breaking the streak
 - **Near-miss feedback**: "So close!" when 1 peg away, "Almost there!" when 2 away with yellows
 - **Last attempt pulse**: Red border pulse animation on the final attempt row
-- **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone (dailyHardUnlocked saved in AsyncStorage)
+- **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone with discrete inline toggle (dailyHardUnlocked saved in AsyncStorage)
+- **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c, Crystal 180c), Backgrounds (Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c). Owned cosmetics can be equipped/swapped.
+- **Share Format**: Shows actual colored peg emojis (🔴🔵🟡🟢🟣🟠) for each guess row, not feedback squares - distinct from Wordle sharing
 
 ### Build & Deploy
 - **Development**: Two processes - `expo:dev` for the mobile client, `server:dev` for the Express backend
