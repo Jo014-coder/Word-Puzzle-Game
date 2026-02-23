@@ -324,14 +324,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }));
 
       if (!claimedToday) {
-        const newCoins = save.coins + 10;
+        const newCoins = save.coins + 3;
         persistSave({ coins: newCoins, lastPlayedDate: today });
         setState(prev => ({
           ...prev,
           coins: newCoins,
           lastPlayedDate: today,
           dailyLoginClaimed: true,
-          toastMessage: 'Daily login: +10 coins!',
+          toastMessage: 'Daily login: +3 coins!',
           toastType: 'milestone',
         }));
       }
@@ -556,7 +556,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (isWin) {
         haptic('success');
         const newStreak = prev.streak + 1;
-        let coinReward = 20 + newStreak * 5;
+        let coinReward = 8 + newStreak * 2;
         let bonusCoins = 0;
         let milestoneMsg: string | null = null;
         let newHintTokens = prev.hintTokens;
@@ -565,7 +565,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         let newObsidian = prev.obsidianTheme;
 
         let newDailyHard = prev.dailyHardUnlocked;
-        if (newStreak === 3) { bonusCoins = 50; milestoneMsg = 'Streak 3 bonus: +50 coins!'; }
+        if (newStreak === 3) { bonusCoins = 15; milestoneMsg = 'Streak 3 bonus: +15 coins!'; }
         else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
         else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
         else if (newStreak === 10) { newShield = true; newDailyHard = true; milestoneMsg = 'Streak 10: Shield + Daily Hard mode unlocked!'; }
