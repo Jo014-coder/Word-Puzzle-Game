@@ -38,13 +38,13 @@ Preferred communication style: Simple, everyday language.
 - **Difficulties**: Easy (4 pegs/8 attempts/1 hint), Medium (5/6), Hard (6/5), Extreme (7/4 + 1 fake feedback pin, locked by default - purchasable in shop)
 - **Feedback algorithm**: Two-pass Mastermind evaluation - Pass 1 marks exact matches, Pass 2 marks misplaced colors without double-counting. Returns per-position green/yellow/grey array.
 - **Game modes**: Daily Challenge (Medium default, Hard unlockable at streak 10, auto-starts), Endless Mode (training/practice, auto-levels every 3 wins), Time Attack (60s timer, +8s per win, board auto-clears after each solve)
-- **Reward system**: Coins (20 + streak*5), streak milestones (3: +50 coins, 5: hint token, 7: gold pegs, 10: shield + daily Hard unlock, 15: obsidian theme)
+- **Reward system**: Coins (8 + streak×2, capped at 30), streak milestones (3: +15 coins, 5: hint token, 7: gold pegs, 10: shield + daily Hard unlock, 15: obsidian background theme). Streaks require consecutive-day play.
 - **Hidden difficulty reduction**: After 3 consecutive losses (2 for Time Attack), next game drops one difficulty level
 - **Streak Shield**: Protects one loss from breaking the streak
 - **Near-miss feedback**: "So close!" when 1 peg away, "Almost there!" when 2 away with yellows
 - **Last attempt pulse**: Red border pulse animation on the final attempt row
 - **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone with discrete inline toggle (dailyHardUnlocked saved in AsyncStorage)
-- **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c, Crystal 180c), Backgrounds (Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c). Owned cosmetics can be equipped/swapped.
+- **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c — blocks duplicate purchase), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c with glow effect, Crystal 180c with shimmer), Backgrounds (Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c, Obsidian via streak 15). Purchase confirmation dialog on all buys. Owned cosmetics can be equipped/swapped.
 - **Share Format**: Shows actual colored peg emojis (🔴🔵🟡🟢🟣🟠) for each guess row, not feedback squares - distinct from Wordle sharing
 
 ### Build & Deploy

@@ -45,10 +45,11 @@ const Colors = {
 
   backgroundThemes: {
     default: '#111827',
-    midnight: '#080C18',
-    ocean: '#0A1628',
-    nebula: '#1A0A2E',
-    ember: '#1A0F0A',
+    midnight: '#050510',
+    ocean: '#041828',
+    nebula: '#140520',
+    ember: '#1C0805',
+    bg_obsidian: '#06060A',
   } as Record<string, string>,
 
   difficultyColors: {

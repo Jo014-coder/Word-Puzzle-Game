@@ -163,6 +163,12 @@ function getTodayKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+function getYesterdayKey(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 function generateCode(config: typeof DIFFICULTY_CONFIG.easy, daily: boolean = false): number[] {
   const code: number[] = [];
   if (daily) {
@@ -300,6 +306,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
     loadSave().then(save => {
       const today = getTodayKey();
       const claimedToday = save.lastPlayedDate === today;
+
+      const cleanedDaily = { ...(save.dailyPlayed || {}) };
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 30);
+      let cleaned = false;
+      Object.keys(cleanedDaily).forEach(key => {
+        const dateStr = key.split('_')[0];
+        if (new Date(dateStr) < cutoff) {
+          delete cleanedDaily[key];
+          cleaned = true;
+        }
+      });
+      if (cleaned) {
+        persistSave({ dailyPlayed: cleanedDaily });
+      }
+
       setState(prev => ({
         ...prev,
         streak: save.streak,
@@ -312,7 +334,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         obsidianTheme: save.obsidianTheme,
         consecutiveLosses: save.consecutiveLosses,
         endlessWinStreak: save.endlessWinStreak,
-        dailyPlayed: save.dailyPlayed || {},
+        dailyPlayed: cleanedDaily,
         lastPlayedDate: save.lastPlayedDate,
         dailyLoginClaimed: claimedToday,
         dailyHardUnlocked: save.dailyHardUnlocked || false,
@@ -555,21 +577,32 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       if (isWin) {
         haptic('success');
-        const newStreak = prev.streak + 1;
-        let coinReward = 8 + newStreak * 2;
+        const today = getTodayKey();
+        const yesterday = getYesterdayKey();
+        const lastPlayed = prev.lastPlayedDate;
+        const isConsecutiveDay = lastPlayed === today || lastPlayed === yesterday || lastPlayed === '';
+        const newStreak = isConsecutiveDay ? prev.streak + 1 : 1;
+        let coinReward = Math.min(8 + newStreak * 2, 30);
         let bonusCoins = 0;
         let milestoneMsg: string | null = null;
         let newHintTokens = prev.hintTokens;
         let newShield = prev.streakShield;
         let newGold = prev.goldPegsUnlocked;
         let newObsidian = prev.obsidianTheme;
+        let newOwnedItems = [...prev.ownedItems];
+        let newActiveBackground = prev.activeBackground;
 
         let newDailyHard = prev.dailyHardUnlocked;
         if (newStreak === 3) { bonusCoins = 15; milestoneMsg = 'Streak 3 bonus: +15 coins!'; }
         else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
         else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
         else if (newStreak === 10) { newShield = true; newDailyHard = true; milestoneMsg = 'Streak 10: Shield + Daily Hard mode unlocked!'; }
-        else if (newStreak === 15) { newObsidian = true; milestoneMsg = 'Streak 15: Obsidian theme unlocked!'; }
+        else if (newStreak === 15) {
+          newObsidian = true;
+          if (!newOwnedItems.includes('bg_obsidian')) newOwnedItems.push('bg_obsidian');
+          if (prev.activeBackground === 'default') newActiveBackground = 'bg_obsidian';
+          milestoneMsg = 'Streak 15: Obsidian theme unlocked!';
+        }
 
         const isTimeAttack = prev.gameMode === 'timeAttack';
         let comboMultiplier = 1;
@@ -607,7 +640,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           consecutiveLosses: 0, goldPegsUnlocked: newGold, obsidianTheme: newObsidian,
           endlessWinStreak: newEndlessWinStreak, dailyPlayed: newDailyPlayed,
           lastPlayedDate: getTodayKey(), dailyHardUnlocked: newDailyHard,
-          timeAttackLosses: 0,
+          timeAttackLosses: 0, ownedItems: newOwnedItems, activeBackground: newActiveBackground,
           ...(dailyResult ? { lastDailyGame: dailyResult } : {}),
         };
         persistSave(saveData);
@@ -649,6 +682,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
             timeAttackLosses: 0,
             timeAttackNextRows: newEmptyRows,
             dailyHardUnlocked: newDailyHard,
+            ownedItems: newOwnedItems,
+            activeBackground: newActiveBackground,
           };
         }
 
@@ -676,6 +711,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           dailyPlayed: newDailyPlayed,
           dailyHardUnlocked: newDailyHard,
           lastDailyGame: dailyResult || prev.lastDailyGame,
+          ownedItems: newOwnedItems,
+          activeBackground: newActiveBackground,
         };
       }
 
@@ -782,11 +819,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     if (mode === 'endless' && state.endlessAutoLevelUp && diff !== 'extreme') {
       const idx = DIFFICULTY_ORDER.indexOf(diff);
-      diff = DIFFICULTY_ORDER[Math.min(idx + 1, DIFFICULTY_ORDER.length - 1)];
+      const nextDiff = DIFFICULTY_ORDER[Math.min(idx + 1, DIFFICULTY_ORDER.length - 1)];
+      if (nextDiff !== 'extreme' || state.ownedItems.includes('extreme')) {
+        diff = nextDiff;
+      }
     }
 
     loadSave().then(save => startGame(diff, mode, save));
-  }, [state.gameMode, state.difficulty, state.endlessAutoLevelUp, startGame]);
+  }, [state.gameMode, state.difficulty, state.endlessAutoLevelUp, state.ownedItems, startGame]);
 
   const backToMenu = useCallback(() => {
     haptic('light');
@@ -871,7 +911,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const config = DIFFICULTY_CONFIG[diff];
     const attempts = won ? state.currentRow + 1 : 'X';
 
-    let text = `🎯 Griddl · ${getTodayKey()}\nSolved in ${attempts}/${config.maxAttempts}\n\n`;
+    const header = won ? `Solved in ${attempts}/${config.maxAttempts}` : `${config.maxAttempts}/${config.maxAttempts} — not today!`;
+    let text = `🎯 Griddl · ${getTodayKey()}\n${header}\n\n`;
     for (let ri = 0; ri < rows.length; ri++) {
       const row = rows[ri];
       if (!row.submitted) continue;
@@ -949,6 +990,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
           updates.hintTokens = prev.hintTokens + 1;
           saveUpdates.hintTokens = prev.hintTokens + 1;
         } else if (itemId === 'shield') {
+          if (prev.streakShield) {
+            return { ...prev, toastMessage: 'Shield already active!', toastType: 'info' as const };
+          }
           updates.streakShield = true;
           saveUpdates.streakShield = true;
         }

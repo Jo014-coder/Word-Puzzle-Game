@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Platform, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
@@ -79,6 +79,30 @@ export default function ShopScreen() {
     return false;
   };
 
+  const handleItemPress = (item: ShopItem) => {
+    const owned = isOwned(item.id);
+    const isConsumable = item.category === 'consumable';
+
+    if (owned && !isConsumable) {
+      purchaseItem(item.id);
+      return;
+    }
+
+    if (coins < item.price) {
+      purchaseItem(item.id);
+      return;
+    }
+
+    Alert.alert(
+      'Confirm Purchase',
+      `Buy ${item.name} for ${item.price} coins?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Buy', onPress: () => purchaseItem(item.id) },
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTop }]}>
       <View style={styles.topBar}>
@@ -110,7 +134,7 @@ export default function ShopScreen() {
                   owned={isOwned(item.id)}
                   active={isActive(item)}
                   canAfford={coins >= item.price}
-                  onPress={() => purchaseItem(item.id)}
+                  onPress={() => handleItemPress(item)}
                 />
               ))}
             </View>
@@ -133,7 +157,7 @@ export default function ShopScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: 'transparent',
   },
   topBar: {
     flexDirection: 'row',
