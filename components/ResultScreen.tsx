@@ -76,7 +76,7 @@ export default function ResultScreen() {
     phase, secretCode, coinsEarned, streak, coins, playAgain, backToMenu,
     showConfetti, toastMessage, toastType, clearToast, currentRow,
     effectiveDifficulty, difficulty, gameMode, timeAttackScore, timeAttackCoins,
-    endlessAutoLevelUp, shareDaily, viewingDaily,
+    endlessAutoLevelUp, shareDaily, viewingDaily, requestRewardedAd, rewardedAdWatched,
   } = useGame();
   const insets = useSafeAreaInsets();
   const diff = effectiveDifficulty || difficulty || 'easy';
@@ -158,6 +158,17 @@ export default function ResultScreen() {
             <Ionicons name="arrow-up-circle" size={18} color={Colors.correctPeg} />
             <Text style={styles.levelUpText}>Difficulty leveled up!</Text>
           </View>
+        )}
+
+        {!rewardedAdWatched && (
+          <Pressable
+            onPress={requestRewardedAd}
+            style={({ pressed }) => [styles.rewardedAdButton, { opacity: pressed ? 0.8 : 1 }]}
+          >
+            <Ionicons name="play-circle" size={20} color="#FBBF24" />
+            <Text style={styles.rewardedAdText}>Watch ad for +3 coins</Text>
+            <Text style={styles.rewardedAdEmoji}>{'\uD83E\uDE99'}</Text>
+          </Pressable>
         )}
 
         <View style={styles.buttonsRow}>
@@ -335,5 +346,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
     fontFamily: 'Inter_600SemiBold',
+  },
+  rewardedAdButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(251,191,36,0.12)',
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(251,191,36,0.25)',
+  },
+  rewardedAdText: {
+    color: '#FBBF24',
+    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: 'Inter_600SemiBold',
+  },
+  rewardedAdEmoji: {
+    fontSize: 16,
   },
 });

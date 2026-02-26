@@ -45,6 +45,7 @@ interface SaveData {
   ownedItems: string[];
   activePinStyle: string;
   activeBackground: string;
+  adsRemoved: boolean;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -66,6 +67,7 @@ const DEFAULT_SAVE: SaveData = {
   ownedItems: [],
   activePinStyle: 'default',
   activeBackground: 'default',
+  adsRemoved: false,
 };
 
 export type Screen = 'home' | 'game' | 'result' | 'shop';
@@ -114,6 +116,10 @@ export interface GameState {
   ownedItems: string[];
   activePinStyle: string;
   activeBackground: string;
+  adsRemoved: boolean;
+  adPhase: 'none' | 'interstitial' | 'rewarded';
+  pendingGameStart: { difficulty: Difficulty; mode: GameMode } | null;
+  rewardedAdWatched: boolean;
 }
 
 interface GameContextValue extends GameState {
@@ -134,6 +140,9 @@ interface GameContextValue extends GameState {
   viewLastDaily: () => void;
   openShop: () => void;
   purchaseItem: (itemId: string) => void;
+  dismissAd: () => void;
+  requestRewardedAd: () => void;
+  completeRewardedAd: () => void;
 }
 
 const STORAGE_KEY = 'griddl_v2_save';
@@ -300,6 +309,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     ownedItems: [],
     activePinStyle: 'default',
     activeBackground: 'default',
+    adsRemoved: false,
+    adPhase: 'none',
+    pendingGameStart: null,
+    rewardedAdWatched: false,
   });
 
   useEffect(() => {
@@ -343,6 +356,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ownedItems: save.ownedItems || [],
         activePinStyle: save.activePinStyle || 'default',
         activeBackground: save.activeBackground || 'default',
+        adsRemoved: save.adsRemoved || false,
       }));
 
       if (!claimedToday) {
@@ -426,6 +440,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       fakeFeedbackUsed: false,
       hiddenDifficultyReduction: hiddenReduction,
       endlessAutoLevelUp: false,
+      rewardedAdWatched: false,
       timeLeft: isTimeAttack ? TIME_ATTACK_DURATION : 0,
       timeAttackScore: isTimeAttack ? 0 : prev.timeAttackScore,
       timeAttackCoins: isTimeAttack ? 0 : prev.timeAttackCoins,
@@ -442,6 +457,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       endlessWinStreak: save.endlessWinStreak,
     }));
   }, []);
+
+  const launchGameWithAd = useCallback((difficulty: Difficulty, mode: GameMode) => {
+    if (state.adsRemoved) {
+      loadSave().then(save => startGame(difficulty, mode, save));
+    } else {
+      setState(prev => ({
+        ...prev,
+        adPhase: 'interstitial',
+        pendingGameStart: { difficulty, mode },
+      }));
+    }
+  }, [state.adsRemoved, startGame]);
 
   const selectMode = useCallback((mode: GameMode) => {
     haptic('light');
@@ -483,11 +510,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }));
         return;
       }
-      loadSave().then(save => startGame('medium', mode, save));
+      launchGameWithAd('medium', mode);
       return;
     }
-    setState(prev => ({ ...prev, gameMode: mode }));
-  }, [state.dailyPlayed, state.dailyHardUnlocked, state.lastDailyGame, startGame]);
+    setState(prev => ({
+      ...prev,
+      gameMode: prev.gameMode === mode ? null : mode,
+    }));
+  }, [state.dailyPlayed, state.dailyHardUnlocked, state.lastDailyGame, launchGameWithAd]);
 
   const selectDifficulty = useCallback((d: Difficulty) => {
     haptic('medium');
@@ -515,8 +545,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    loadSave().then(save => startGame(d, mode, save));
-  }, [state.gameMode, state.dailyPlayed, state.ownedItems, startGame]);
+    launchGameWithAd(d, mode);
+  }, [state.gameMode, state.dailyPlayed, state.ownedItems, launchGameWithAd]);
 
   const selectSlot = useCallback((slotIndex: number) => {
     haptic('light');
@@ -1019,6 +1049,42 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const dismissAd = useCallback(() => {
+    const pending = state.pendingGameStart;
+    setState(prev => ({ ...prev, adPhase: 'none', pendingGameStart: null }));
+    if (pending) {
+      loadSave().then(save => startGame(pending.difficulty, pending.mode, save));
+    }
+  }, [state.pendingGameStart, startGame]);
+
+  const requestRewardedAd = useCallback(() => {
+    if (state.rewardedAdWatched) return;
+    setState(prev => ({ ...prev, adPhase: 'rewarded' }));
+  }, [state.rewardedAdWatched]);
+
+  const completeRewardedAd = useCallback(() => {
+    setState(prev => {
+      const newCoins = prev.coins + 3;
+      persistSave({ coins: newCoins });
+      return {
+        ...prev,
+        coins: newCoins,
+        adPhase: 'none',
+        rewardedAdWatched: true,
+        toastMessage: '+3 coins earned!',
+        toastType: 'success' as const,
+      };
+    });
+  }, []);
+
+  const dismissAdOverlay = useCallback(() => {
+    if (state.adPhase === 'interstitial') {
+      dismissAd();
+    } else if (state.adPhase === 'rewarded') {
+      setState(prev => ({ ...prev, adPhase: 'none' }));
+    }
+  }, [state.adPhase, dismissAd]);
+
   const value = useMemo(() => ({
     ...state,
     selectMode,
@@ -1038,7 +1104,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     viewLastDaily,
     openShop,
     purchaseItem,
-  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig, shareDaily, viewLastDaily, openShop, purchaseItem]);
+    dismissAd: dismissAdOverlay,
+    requestRewardedAd,
+    completeRewardedAd,
+  }), [state, selectMode, selectDifficulty, selectColor, selectSlot, clearSlot, submitGuess, playAgain, backToMenu, useHint, clearToast, clearShake, finishReveal, getConfig, shareDaily, viewLastDaily, openShop, purchaseItem, dismissAdOverlay, requestRewardedAd, completeRewardedAd]);
 
   return (
     <GameContext.Provider value={value}>

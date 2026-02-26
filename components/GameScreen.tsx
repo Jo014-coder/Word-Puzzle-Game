@@ -51,9 +51,11 @@ function TopBar() {
             <Text style={styles.hintCount}>{hintTokens}</Text>
           </Pressable>
         )}
-        <View style={[styles.diffBadge, { borderColor: color }]}>
-          <Text style={[styles.diffBadgeText, { color }]}>{config.label}</Text>
-        </View>
+        {gameMode !== 'daily' && (
+          <View style={[styles.diffBadge, { borderColor: color }]}>
+            <Text style={[styles.diffBadgeText, { color }]}>{config.label}</Text>
+          </View>
+        )}
       </View>
     </View>
   );

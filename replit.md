@@ -46,6 +46,8 @@ Preferred communication style: Simple, everyday language.
 - **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone with discrete inline toggle (dailyHardUnlocked saved in AsyncStorage)
 - **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c — blocks duplicate purchase), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c with glow effect, Crystal 180c with shimmer), Backgrounds (Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c, Obsidian via streak 15). Purchase confirmation dialog on all buys. Owned cosmetics can be equipped/swapped.
 - **Share Format**: Shows actual colored peg emojis (🔴🔵🟡🟢🟣🟠) for each guess row, not feedback squares - distinct from Wordle sharing
+- **Ads**: Interstitial ads shown before game launch (Daily Challenge tap, difficulty button tap). Rewarded ad button on result screen (+3 coins). No banner ads. `adsRemoved` boolean (default false, saved to AsyncStorage) skips interstitials but keeps rewarded button. Test Ad Unit IDs: interstitial `ca-app-pub-3940256099942544/1033173712`, rewarded `ca-app-pub-3940256099942544/5224354917`. Currently simulated via AdOverlay component for Expo Go compatibility.
+- **Toggle deselection**: Tapping an already-selected game mode (Endless/Time Attack) deselects it, hiding the difficulty grid
 
 ### Build & Deploy
 - **Development**: Two processes - `expo:dev` for the mobile client, `server:dev` for the Express backend

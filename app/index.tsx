@@ -5,9 +5,10 @@ import HomeScreen from '@/components/HomeScreen';
 import GameScreen from '@/components/GameScreen';
 import ResultScreen from '@/components/ResultScreen';
 import ShopScreen from '@/components/ShopScreen';
+import AdOverlay from '@/components/AdOverlay';
 
 export default function Index() {
-  const { screen, activeBackground } = useGame();
+  const { screen, activeBackground, adPhase, dismissAd, completeRewardedAd } = useGame();
   const bg = Colors.backgroundThemes[activeBackground] || Colors.background;
 
   return (
@@ -17,6 +18,12 @@ export default function Index() {
       {screen === 'game' && <GameScreen />}
       {screen === 'result' && <ResultScreen />}
       {screen === 'shop' && <ShopScreen />}
+      {adPhase !== 'none' && (
+        <AdOverlay
+          type={adPhase}
+          onComplete={adPhase === 'rewarded' ? completeRewardedAd : dismissAd}
+        />
+      )}
     </View>
   );
 }
