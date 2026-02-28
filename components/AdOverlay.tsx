@@ -87,7 +87,7 @@ export default function AdOverlay({ type, onComplete }: AdOverlayProps) {
             <Text style={styles.adSubtitle}>
               {type === 'interstitial'
                 ? 'Ad Unit — ca-app-pub-1857750915324923/3325721935'
-                : 'Rewarded Ad'}
+                : 'Ad Unit — ca-app-pub-1857750915324923/6239659881'}
             </Text>
           </View>
 
