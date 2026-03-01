@@ -30,7 +30,8 @@
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
-      }
+      },
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -38,7 +39,8 @@
     "plugins": [
       ["react-native-google-mobile-ads", {
         "androidAppId": "ca-app-pub-1857750915324923~5996117307",
-        "iosAppId": "ca-app-pub-1857750915324923~5996117307"
+        "iosAppId": "ca-app-pub-1857750915324923~5996117307",
+        "delayAppMeasurementInit": false
       }],
       [
         "expo-router",
