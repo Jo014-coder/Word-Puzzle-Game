@@ -359,7 +359,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         adsRemoved: save.adsRemoved || false,
       }));
 
-      if (!claimedToday) {
+      if (!claimedToday && save.lastPlayedDate !== '') {
         const newCoins = save.coins + 3;
         persistSave({ coins: newCoins, lastPlayedDate: today });
         setState(prev => ({
@@ -478,21 +478,29 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const hasPlayedHard = state.dailyPlayed[`${todayKey}_hard`];
       const hasPlayed = hasPlayedMedium || hasPlayedHard;
 
-      if (hasPlayed && state.lastDailyGame && state.lastDailyGame.date === todayKey) {
-        const dg = state.lastDailyGame;
-        setState(prev => ({
-          ...prev,
-          screen: 'game',
-          gameMode: 'daily',
-          difficulty: dg.difficulty as Difficulty,
-          effectiveDifficulty: dg.difficulty as Difficulty,
-          phase: dg.phase,
-          rows: dg.rows,
-          currentRow: dg.currentRow,
-          secretCode: dg.secretCode,
-          viewingDaily: true,
-          showConfetti: false,
-        }));
+      if (hasPlayed) {
+        if (state.lastDailyGame && state.lastDailyGame.date === todayKey) {
+          const dg = state.lastDailyGame;
+          setState(prev => ({
+            ...prev,
+            screen: 'game',
+            gameMode: 'daily',
+            difficulty: dg.difficulty as Difficulty,
+            effectiveDifficulty: dg.difficulty as Difficulty,
+            phase: dg.phase,
+            rows: dg.rows,
+            currentRow: dg.currentRow,
+            secretCode: dg.secretCode,
+            viewingDaily: true,
+            showConfetti: false,
+          }));
+        } else {
+          setState(prev => ({
+            ...prev,
+            toastMessage: 'Already played today! Come back tomorrow.',
+            toastType: 'info',
+          }));
+        }
         return;
       }
 
@@ -501,15 +509,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      if (hasPlayedMedium) {
-        setState(prev => ({
-          ...prev,
-          gameMode: mode,
-          toastMessage: 'Already played today! Come back tomorrow.',
-          toastType: 'info',
-        }));
-        return;
-      }
       launchGameWithAd('medium', mode);
       return;
     }
@@ -610,7 +609,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const today = getTodayKey();
         const yesterday = getYesterdayKey();
         const lastPlayed = prev.lastPlayedDate;
-        const isConsecutiveDay = lastPlayed === today || lastPlayed === yesterday || lastPlayed === '';
+        const isConsecutiveDay = lastPlayed === yesterday;
         const newStreak = isConsecutiveDay ? prev.streak + 1 : 1;
         let coinReward = Math.min(8 + newStreak * 2, 30);
         let bonusCoins = 0;
@@ -623,15 +622,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
         let newActiveBackground = prev.activeBackground;
 
         let newDailyHard = prev.dailyHardUnlocked;
-        if (newStreak === 3) { bonusCoins = 15; milestoneMsg = 'Streak 3 bonus: +15 coins!'; }
-        else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
-        else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
-        else if (newStreak === 10) { newShield = true; newDailyHard = true; milestoneMsg = 'Streak 10: Shield + Daily Hard mode unlocked!'; }
-        else if (newStreak === 15) {
-          newObsidian = true;
-          if (!newOwnedItems.includes('bg_obsidian')) newOwnedItems.push('bg_obsidian');
-          if (prev.activeBackground === 'default') newActiveBackground = 'bg_obsidian';
-          milestoneMsg = 'Streak 15: Obsidian theme unlocked!';
+        if (newStreak >= 2) {
+          if (newStreak === 3) { bonusCoins = 15; milestoneMsg = 'Streak 3 bonus: +15 coins!'; }
+          else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
+          else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
+          else if (newStreak === 10) { newShield = true; newDailyHard = true; milestoneMsg = 'Streak 10: Shield + Daily Hard mode unlocked!'; }
+          else if (newStreak === 15) {
+            newObsidian = true;
+            if (!newOwnedItems.includes('bg_obsidian')) newOwnedItems.push('bg_obsidian');
+            if (prev.activeBackground === 'default') newActiveBackground = 'bg_obsidian';
+            milestoneMsg = 'Streak 15: Obsidian theme unlocked!';
+          }
         }
 
         const isTimeAttack = prev.gameMode === 'timeAttack';
