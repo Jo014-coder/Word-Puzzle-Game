@@ -1,13 +1,10 @@
-import { View, Text, Pressable, StyleSheet, Modal } from 'react-native';
-import { useEffect, useState, useRef } from 'react';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import Colors from '@/constants/colors';
+import { useEffect, useRef } from 'react';
+import { Platform } from 'react-native';
+
+const INTERSTITIAL_ID = 'ca-app-pub-1857750915324923/3325721935';
+const REWARDED_ID = 'ca-app-pub-1857750915324923/6239659881';
+const INTERSTITIAL_TEST_ID = 'ca-app-pub-3940256099942544/1033173712';
+const REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
 
 interface AdOverlayProps {
   type: 'interstitial' | 'rewarded';
@@ -15,157 +12,49 @@ interface AdOverlayProps {
 }
 
 export default function AdOverlay({ type, onComplete }: AdOverlayProps) {
-  const [countdown, setCountdown] = useState(type === 'interstitial' ? 3 : 5);
-  const [finished, setFinished] = useState(false);
-  const completedRef = useRef(false);
-  const progress = useSharedValue(0);
+  const calledRef = useRef(false);
 
   useEffect(() => {
-    const total = type === 'interstitial' ? 3 : 5;
-    progress.value = withTiming(1, { duration: total * 1000, easing: Easing.linear });
-
-    const interval = setInterval(() => {
-      setCountdown(prev => {
-        const next = prev - 1;
-        if (next <= 0) {
-          clearInterval(interval);
-          setFinished(true);
-          return 0;
+    if (Platform.OS === 'web') {
+      if (!calledRef.current) { calledRef.current = true; onComplete(); }
+      return;
+    }
+    let isMounted = true;
+    const runAd = async () => {
+      try {
+        const { InterstitialAd, RewardedAd, AdEventType, RewardedAdEventType } = await import('react-native-google-mobile-ads');
+        const isDev = __DEV__;
+        if (type === 'interstitial') {
+          const adUnitId = isDev ? INTERSTITIAL_TEST_ID : INTERSTITIAL_ID;
+          const interstitial = InterstitialAd.createForAdRequest(adUnitId, { requestNonPersonalizedAdsOnly: false });
+          const unsubLoad = interstitial.addAdEventListener(AdEventType.LOADED, () => interstitial.show());
+          const unsubClose = interstitial.addAdEventListener(AdEventType.CLOSED, () => {
+            unsubLoad(); unsubClose();
+            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+          });
+          interstitial.addAdEventListener(AdEventType.ERROR, () => {
+            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+          });
+          interstitial.load();
+        } else {
+          const adUnitId = isDev ? REWARDED_TEST_ID : REWARDED_ID;
+          const rewarded = RewardedAd.createForAdRequest(adUnitId, { requestNonPersonalizedAdsOnly: false });
+          rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => rewarded.show());
+          rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
+            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+          });
+          rewarded.addAdEventListener(AdEventType.ERROR, () => {
+            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+          });
+          rewarded.load();
         }
-        return next;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
+      } catch {
+        if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+      }
+    };
+    runAd();
+    return () => { isMounted = false; };
   }, []);
 
-  useEffect(() => {
-    if (finished && !completedRef.current) {
-      completedRef.current = true;
-      if (type === 'interstitial') {
-        onComplete();
-      }
-    }
-  }, [finished]);
-
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%` as any,
-  }));
-
-  const handleClose = () => {
-    if (completedRef.current && type === 'interstitial') return;
-    completedRef.current = true;
-    onComplete();
-  };
-
-  return (
-    <Modal transparent animationType="fade" statusBarTranslucent>
-      <View style={styles.overlay}>
-        <View style={styles.adContainer}>
-          <View style={styles.adHeader}>
-            <Text style={styles.adLabel}>
-              {type === 'interstitial' ? 'AD' : 'REWARDED AD'}
-            </Text>
-            {finished ? (
-              <Pressable onPress={handleClose} hitSlop={12} style={styles.closeButton}>
-                <Ionicons name="close" size={22} color={Colors.textPrimary} />
-              </Pressable>
-            ) : (
-              <Text style={styles.countdownText}>{countdown}s</Text>
-            )}
-          </View>
-
-          <View style={styles.adBody}>
-            <Ionicons
-              name={type === 'interstitial' ? 'megaphone-outline' : 'play-circle-outline'}
-              size={64}
-              color={Colors.textMuted}
-            />
-            <Text style={styles.adTitle}>
-              {type === 'interstitial' ? 'Advertisement' : 'Watch to earn coins'}
-            </Text>
-            <Text style={styles.adSubtitle}>
-              {type === 'interstitial'
-                ? 'Ad Unit — ca-app-pub-1857750915324923/3325721935'
-                : 'Ad Unit — ca-app-pub-1857750915324923/6239659881'}
-            </Text>
-          </View>
-
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, barStyle]} />
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
+  return null;
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  adContainer: {
-    width: '100%',
-    maxWidth: 360,
-    backgroundColor: Colors.surface,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-  adHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
-  },
-  adLabel: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: Colors.textMuted,
-    letterSpacing: 2,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  countdownText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-    fontFamily: 'Inter_600SemiBold',
-  },
-  adBody: {
-    alignItems: 'center',
-    paddingVertical: 48,
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  adTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: Colors.textPrimary,
-    fontFamily: 'Inter_700Bold',
-  },
-  adSubtitle: {
-    fontSize: 10,
-    color: Colors.textMuted,
-    fontFamily: 'Inter_400Regular',
-    textAlign: 'center',
-  },
-  progressTrack: {
-    height: 4,
-    backgroundColor: Colors.surfaceLight,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: Colors.accent,
-  },
-});

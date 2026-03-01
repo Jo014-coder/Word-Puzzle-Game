@@ -15,13 +15,13 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.myapp",
+      "bundleIdentifier": "com.jaglab.griddl",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-1857750915324923~5996117307"
       }
     },
     "android": {
-      "package": "com.myapp",
+      "package": "com.jaglab.griddl",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-1857750915324923~5996117307"
       },
@@ -36,6 +36,10 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      ["react-native-google-mobile-ads", {
+        "androidAppId": "ca-app-pub-1857750915324923~5996117307",
+        "iosAppId": "ca-app-pub-1857750915324923~5996117307"
+      }],
       [
         "expo-router",
         {
@@ -48,6 +52,14 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": "https://replit.com/"
+      },
+      "eas": {
+        "projectId": "fa11f000-8ba3-4318-babb-8dfd1ebc86c9"
+      }
     }
   }
 }

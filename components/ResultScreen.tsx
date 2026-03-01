@@ -112,7 +112,7 @@ export default function ResultScreen() {
             color={won ? Colors.coin : Colors.streak}
           />
           <Text style={styles.resultTitle}>
-            {won ? (isTimeAttack ? 'Time Up!' : 'You cracked it!') : 'Game Over'}
+            {won ? (isTimeAttack ? 'Time Attack Complete!' : 'You cracked it!') : (isTimeAttack ? 'Time Up!' : 'Game Over')}
           </Text>
           {won && !isTimeAttack && (
             <Text style={styles.attemptText}>
@@ -167,7 +167,7 @@ export default function ResultScreen() {
           >
             <Ionicons name="play-circle" size={20} color="#FBBF24" />
             <Text style={styles.rewardedAdText}>Watch ad for +3 coins</Text>
-            <Text style={styles.rewardedAdEmoji}>{'\uD83E\uDE99'}</Text>
+            <Text style={styles.rewardedAdEmoji}>🪙</Text>
           </Pressable>
         )}
 

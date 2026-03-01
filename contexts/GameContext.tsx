@@ -396,7 +396,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }, 1000);
       return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }
-  }, [state.isTimerRunning, state.timeLeft <= 0]);
+  }, [state.isTimerRunning]);
 
   const getConfig = useCallback(() => {
     const diff = state.effectiveDifficulty || state.difficulty || 'easy';
