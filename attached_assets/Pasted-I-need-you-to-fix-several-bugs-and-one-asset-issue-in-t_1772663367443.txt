@@ -1,0 +1,30 @@
+I need you to fix several bugs and one asset issue in this game. Here is a list of everything that needs to be corrected:
+
+---
+
+**BUG 1 — Shop backgrounds not applying**
+When I purchase and select a background in the shop, nothing changes in the game. The background selection is not being applied to the game screen. Please investigate why the purchased/selected background is not rendering and fix it so the selected background visually replaces the default one.
+
+---
+
+**BUG 2 — Clear/Erase button behaves like a one-time delete, not a backspace**
+The Clear button in the game should work exactly like a keyboard backspace key:
+- First press: removes the CURRENTLY selected/last placed peg
+- Second press: removes the one BEFORE it
+- Each subsequent press: removes one more peg going backwards
+At the moment it only erases one peg and does nothing on subsequent presses. Please fix it so each press removes the previous peg in sequence, just like pressing Backspace repeatedly in a text field.
+
+---
+
+**BUG 3 — Pin style in shop changes feedback pins instead of guess pegs**
+When I purchase and apply a "Pin style" in the shop, it is changing the small feedback pins (the hint indicators), NOT the large guess pegs. It should be the opposite: Pin styles should change the appearance of the guess pegs the player places, not the tiny result feedback indicators.
+
+---
+
+**BUG 4 — Rewarded ad in Time Attack mode skipped, coins awarded without watching**
+When I play again after a Time Attack game and tap the button to watch a bonus ad for coins, the coins are awarded immediately without the ad actually playing. The reward should only be granted AFTER the ad has been fully watched. Please add a proper completion callback check so coins are only awarded on ad completion (not on ad request or ad start).
+
+---
+
+**BUG 5 — App launcher icon (phone home screen icon) is wrong**
+The icon displayed on my phone (the app launcher icon — the one you see on the Android home screen) is not the correct logo. It should use the same logo that appears on the game's loading/splash screen when the app first opens. I have attached the correct logo image. Please update the app.json (or app.config.js) so that the `icon` field (and `android.adaptiveIcon.foregroundImage` if applicable) points to this correct logo file. This is NOT the in-game logo — it is the launcher icon shown on the phone.

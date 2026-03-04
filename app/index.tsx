@@ -22,6 +22,7 @@ export default function Index() {
         <AdOverlay
           type={adPhase}
           onComplete={adPhase === 'rewarded' ? completeRewardedAd : dismissAd}
+          onDismiss={adPhase === 'rewarded' ? dismissAd : undefined}
         />
       )}
     </View>

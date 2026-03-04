@@ -570,11 +570,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
     haptic('light');
     setState(prev => {
       if (prev.phase !== 'playing') return prev;
+      const currentPegs = prev.rows[prev.currentRow].pegs;
+      let slotToClear = prev.selectedSlot;
+      if (currentPegs[slotToClear].colorIndex === null) {
+        let found = -1;
+        for (let i = slotToClear - 1; i >= 0; i--) {
+          if (currentPegs[i].colorIndex !== null) { found = i; break; }
+        }
+        if (found === -1) return prev;
+        slotToClear = found;
+      }
       const newRows = prev.rows.map((r, ri) => {
         if (ri !== prev.currentRow) return r;
-        return { ...r, pegs: r.pegs.map((p, pi) => pi === prev.selectedSlot ? { colorIndex: null } : p) };
+        return { ...r, pegs: r.pegs.map((p, pi) => pi === slotToClear ? { colorIndex: null } : p) };
       });
-      return { ...prev, rows: newRows };
+      return { ...prev, rows: newRows, selectedSlot: slotToClear };
     });
   }, []);
 

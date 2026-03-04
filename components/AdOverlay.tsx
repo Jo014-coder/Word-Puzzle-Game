@@ -9,10 +9,12 @@ const REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
 interface AdOverlayProps {
   type: 'interstitial' | 'rewarded';
   onComplete: () => void;
+  onDismiss?: () => void;
 }
 
-export default function AdOverlay({ type, onComplete }: AdOverlayProps) {
+export default function AdOverlay({ type, onComplete, onDismiss }: AdOverlayProps) {
   const calledRef = useRef(false);
+  const rewardEarnedRef = useRef(false);
 
   useEffect(() => {
     if (Platform.OS === 'web') {
@@ -20,6 +22,9 @@ export default function AdOverlay({ type, onComplete }: AdOverlayProps) {
       return;
     }
     let isMounted = true;
+    const dismiss = () => {
+      if (isMounted && !calledRef.current) { calledRef.current = true; (onDismiss || onComplete)(); }
+    };
     const runAd = async () => {
       try {
         const { InterstitialAd, RewardedAd, AdEventType, RewardedAdEventType } = await import('react-native-google-mobile-ads');
@@ -41,15 +46,23 @@ export default function AdOverlay({ type, onComplete }: AdOverlayProps) {
           const rewarded = RewardedAd.createForAdRequest(adUnitId, { requestNonPersonalizedAdsOnly: false });
           rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => rewarded.show());
           rewarded.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => {
-            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+            rewardEarnedRef.current = true;
           });
-          rewarded.addAdEventListener(AdEventType.ERROR, () => {
-            if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+          rewarded.addAdEventListener(AdEventType.CLOSED, () => {
+            if (isMounted && !calledRef.current) {
+              calledRef.current = true;
+              if (rewardEarnedRef.current) { onComplete(); } else { dismiss(); }
+            }
           });
+          rewarded.addAdEventListener(AdEventType.ERROR, () => { dismiss(); });
           rewarded.load();
         }
       } catch {
-        if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+        if (type === 'interstitial') {
+          if (isMounted && !calledRef.current) { calledRef.current = true; onComplete(); }
+        } else {
+          dismiss();
+        }
       }
     };
     runAd();

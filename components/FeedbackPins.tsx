@@ -7,45 +7,21 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import Colors from '@/constants/colors';
-import { FeedbackPeg, useGame } from '@/contexts/GameContext';
+import { FeedbackPeg } from '@/contexts/GameContext';
 
-const PIN_STYLES: Record<string, {
-  green: string; yellow: string; grey: string;
-  borderColor: string; borderWidth: number;
-  shadowColor: string; shadowRadius: number;
-}> = {
-  default: {
-    green: Colors.correctPeg,
-    yellow: Colors.misplacedPeg,
-    grey: Colors.wrongPeg,
-    borderColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    shadowColor: 'transparent',
-    shadowRadius: 0,
-  },
-  pins_neon: {
-    green: '#00FF88',
-    yellow: '#FFD700',
-    grey: '#555577',
-    borderColor: 'rgba(255,255,255,0.3)',
-    borderWidth: 1.5,
-    shadowColor: '#00FF88',
-    shadowRadius: 6,
-  },
-  pins_crystal: {
-    green: '#7DFFB3',
-    yellow: '#FFE680',
-    grey: '#9999BB',
-    borderColor: 'rgba(200,200,255,0.5)',
-    borderWidth: 2,
-    shadowColor: '#A0A0FF',
-    shadowRadius: 4,
-  },
+const FEEDBACK_STYLE = {
+  green: Colors.correctPeg,
+  yellow: Colors.misplacedPeg,
+  grey: Colors.wrongPeg,
+  borderColor: 'rgba(255,255,255,0.15)',
+  borderWidth: 1,
+  shadowColor: 'transparent',
+  shadowRadius: 0,
 };
 
 function FeedbackPin({ peg, index, pinSize, animated, style }: {
   peg: FeedbackPeg; index: number; pinSize: number; animated: boolean;
-  style: typeof PIN_STYLES.default;
+  style: typeof FEEDBACK_STYLE;
 }) {
   const scale = useSharedValue(animated ? 0 : 1);
 
@@ -94,8 +70,7 @@ interface FeedbackPinsProps {
 }
 
 export default function FeedbackPins({ feedback, pinSize = 10, animated = false }: FeedbackPinsProps) {
-  const { activePinStyle } = useGame();
-  const style = PIN_STYLES[activePinStyle] || PIN_STYLES.default;
+  const style = FEEDBACK_STYLE;
 
   return (
     <View style={styles.container}>
