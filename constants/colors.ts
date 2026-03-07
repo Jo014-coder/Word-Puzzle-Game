@@ -43,19 +43,6 @@ const Colors = {
 
   pegEmojis: ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'] as string[],
 
-  backgroundThemes: {
-    default: '#111827',
-    midnight: '#050510',
-    ocean: '#041828',
-    nebula: '#140520',
-    ember: '#1C0805',
-    bg_midnight: '#050510',
-    bg_ocean: '#041828',
-    bg_nebula: '#140520',
-    bg_ember: '#1C0805',
-    bg_obsidian: '#06060A',
-  } as Record<string, string>,
-
   difficultyColors: {
     easy: '#22C55E',
     medium: '#EAB308',

@@ -81,10 +81,16 @@ export const SHOP_ITEMS: ShopItem[] = [
   { id: 'extreme', name: 'Extreme Mode', description: '7 pegs · 4 tries · 1 fake pin', price: 250, category: 'unlock', icon: 'skull-outline' },
   { id: 'pins_neon', name: 'Neon Glow', description: 'Glowing neon feedback pins', price: 120, category: 'pins', icon: 'flash-outline' },
   { id: 'pins_crystal', name: 'Crystal', description: 'Sparkling crystal pins', price: 180, category: 'pins', icon: 'diamond-outline' },
-  { id: 'bg_midnight', name: 'Midnight', description: 'Deep dark space', price: 80, category: 'background', icon: 'moon-outline' },
-  { id: 'bg_ocean', name: 'Deep Ocean', description: 'Ocean blue depths', price: 80, category: 'background', icon: 'water-outline' },
-  { id: 'bg_nebula', name: 'Nebula', description: 'Cosmic purple nebula', price: 100, category: 'background', icon: 'planet-outline' },
-  { id: 'bg_ember', name: 'Ember', description: 'Warm ember glow', price: 80, category: 'background', icon: 'flame-outline' },
+  { id: 'bg_default', name: 'Default', description: 'Classic dark theme — always free', price: 0, category: 'background', icon: 'contrast-outline' },
+  { id: 'bg_midnight', name: 'Midnight', description: 'Deep space with distant stars', price: 80, category: 'background', icon: 'moon-outline' },
+  { id: 'bg_ocean', name: 'Deep Ocean', description: 'Dark teal abyss gradient', price: 80, category: 'background', icon: 'water-outline' },
+  { id: 'bg_nebula', name: 'Nebula', description: 'Cosmic purple nebula glow', price: 100, category: 'background', icon: 'planet-outline' },
+  { id: 'bg_ember', name: 'Ember', description: 'Deep crimson fire glow', price: 80, category: 'background', icon: 'flame-outline' },
+  { id: 'bg_aurora', name: 'Aurora', description: 'Stylish northern lights — cool & elegant', price: 120, category: 'background', icon: 'sparkles-outline' },
+  { id: 'bg_marble', name: 'Marble', description: 'Classy black and gold marble luxury', price: 150, category: 'background', icon: 'layers-outline' },
+  { id: 'bg_bauhaus', name: 'Bauhaus', description: 'Arty geometric bold colour blocks', price: 150, category: 'background', icon: 'shapes-outline' },
+  { id: 'bg_neon_city', name: 'Neon City', description: 'Crazy cyberpunk neon explosion', price: 150, category: 'background', icon: 'business-outline' },
+  { id: 'bg_void', name: 'Void', description: 'Ultra stylish deep black with violet edge', price: 200, category: 'background', icon: 'radio-button-on-outline' },
 ];
 
 export const SHOP_CATEGORIES = [

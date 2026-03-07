@@ -66,7 +66,7 @@ const DEFAULT_SAVE: SaveData = {
   lastDailyGame: null,
   ownedItems: [],
   activePinStyle: 'default',
-  activeBackground: 'default',
+  activeBackground: 'bg_default',
   adsRemoved: false,
 };
 
@@ -308,7 +308,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     viewingDaily: false,
     ownedItems: [],
     activePinStyle: 'default',
-    activeBackground: 'default',
+    activeBackground: 'bg_default',
     adsRemoved: false,
     adPhase: 'none',
     pendingGameStart: null,
@@ -355,7 +355,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         lastDailyGame: save.lastDailyGame || null,
         ownedItems: save.ownedItems || [],
         activePinStyle: save.activePinStyle || 'default',
-        activeBackground: save.activeBackground || 'default',
+        activeBackground: save.activeBackground || 'bg_default',
         adsRemoved: save.adsRemoved || false,
       }));
 
@@ -640,7 +640,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           else if (newStreak === 15) {
             newObsidian = true;
             if (!newOwnedItems.includes('bg_obsidian')) newOwnedItems.push('bg_obsidian');
-            if (prev.activeBackground === 'default') newActiveBackground = 'bg_obsidian';
+            if (prev.activeBackground === 'bg_default') newActiveBackground = 'bg_obsidian';
             milestoneMsg = 'Streak 15: Obsidian theme unlocked!';
           }
         }
@@ -1002,7 +1002,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     setState(prev => {
       const isConsumable = item.category === 'consumable';
-      const alreadyOwned = prev.ownedItems.includes(itemId);
+      const alreadyOwned = itemId === 'bg_default' || prev.ownedItems.includes(itemId);
 
       if (!isConsumable && alreadyOwned) {
         if (item.category === 'pins') {
@@ -1011,9 +1011,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return { ...prev, activePinStyle: newStyle, toastMessage: newStyle === 'default' ? 'Default pins equipped' : `${item.name} equipped!`, toastType: 'success' as const };
         }
         if (item.category === 'background') {
-          const newBg = prev.activeBackground === itemId ? 'default' : itemId;
+          const newBg = prev.activeBackground === itemId ? 'bg_default' : itemId;
           persistSave({ activeBackground: newBg });
-          return { ...prev, activeBackground: newBg, toastMessage: newBg === 'default' ? 'Default background equipped' : `${item.name} equipped!`, toastType: 'success' as const };
+          return { ...prev, activeBackground: newBg, toastMessage: newBg === 'bg_default' ? 'Default background equipped' : `${item.name} equipped!`, toastType: 'success' as const };
         }
         return prev;
       }
@@ -1075,6 +1075,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const completeRewardedAd = useCallback(() => {
     setState(prev => {
+      if (prev.adPhase !== 'rewarded') return prev;
       const newCoins = prev.coins + 3;
       persistSave({ coins: newCoins });
       return {

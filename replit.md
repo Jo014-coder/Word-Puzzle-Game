@@ -44,7 +44,7 @@ Preferred communication style: Simple, everyday language.
 - **Near-miss feedback**: "So close!" when 1 peg away, "Almost there!" when 2 away with yellows
 - **Last attempt pulse**: Red border pulse animation on the final attempt row
 - **Daily Challenge**: One play per day, seeded by date. Medium by default. Hard mode unlocked at streak 10 milestone with discrete inline toggle (dailyHardUnlocked saved in AsyncStorage)
-- **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c — blocks duplicate purchase), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c with glow effect, Crystal 180c with shimmer), Backgrounds (Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c, Obsidian via streak 15). Purchase confirmation dialog on all buys. Owned cosmetics can be equipped/swapped.
+- **Coin Shop**: Accessible from home screen. Consumables (Hint Token 30c, Streak Shield 40c — blocks duplicate purchase), Unlocks (Extreme Mode 250c), Pin Styles (Neon Glow 120c with glow effect on guess pegs, Crystal 180c with shimmer on guess pegs), Backgrounds (10 gradient backgrounds: Default free, Midnight 80c, Ocean 80c, Nebula 100c, Ember 80c, Aurora 120c, Marble 150c, Bauhaus 150c, Neon City 150c, Void 200c, Obsidian via streak 15). Background system uses LinearGradient with multi-stop gradients defined in `constants/backgrounds.ts`. Purchase confirmation dialog on all buys. Owned cosmetics can be equipped/swapped.
 - **Share Format**: Shows actual colored peg emojis (🔴🔵🟡🟢🟣🟠) for each guess row, not feedback squares - distinct from Wordle sharing
 - **Ads**: Interstitial ads shown before game launch (Daily Challenge tap, difficulty button tap). Rewarded ad button on result screen (+3 coins). No banner ads. `adsRemoved` boolean (default false, saved to AsyncStorage) skips interstitials but keeps rewarded button. Ad Unit IDs: App ID `ca-app-pub-1857750915324923~5996117307`, interstitial `ca-app-pub-1857750915324923/3325721935`, rewarded `ca-app-pub-1857750915324923/6239659881`. Currently simulated via AdOverlay component for Expo Go compatibility.
 - **Toggle deselection**: Tapping an already-selected game mode (Endless/Time Attack) deselects it, hiding the difficulty grid
@@ -68,7 +68,7 @@ Preferred communication style: Simple, everyday language.
 - **react-native-gesture-handler**: Touch gesture handling
 - **expo-haptics**: Haptic feedback on interactions
 - **expo-image-picker**: Image selection capability
-- **expo-linear-gradient**: Gradient effects for color pegs
+- **expo-linear-gradient**: Gradient effects for color pegs and background themes
 - **@tanstack/react-query**: Server state management
 - **AsyncStorage**: Local data persistence
 - **expo-router**: File-based navigation

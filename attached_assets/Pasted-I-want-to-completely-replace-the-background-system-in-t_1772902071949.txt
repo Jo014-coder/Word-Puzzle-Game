@@ -1,0 +1,193 @@
+I want to completely replace the background system in this game with 
+a new rich gradient system. Follow every step exactly and do not 
+change anything unrelated to backgrounds.
+
+═══════════════════════════════════════
+STEP 1 — Clean up constants/colors.ts
+═══════════════════════════════════════
+
+Remove the entire backgroundThemes object from constants/colors.ts:
+
+DELETE this block completely:
+  backgroundThemes: {
+    default: '#111827',
+    midnight: '#050510',
+    ocean: '#041828',
+    nebula: '#140520',
+    ember: '#1C0805',
+    bg_midnight: '#050510',
+    bg_ocean: '#041828',
+    bg_nebula: '#140520',
+    bg_ember: '#1C0805',
+    bg_obsidian: '#06060A',
+  } as Record<string, string>,
+
+Then search the entire codebase for any reference to 
+Colors.backgroundThemes and remove or replace those lines. 
+Keep Colors.background: '#111827' as the solid fallback 
+for modals and overlays.
+
+═══════════════════════════════════════════════════
+STEP 2 — Replace backgrounds in constants/game.ts
+═══════════════════════════════════════════════════
+
+Remove the existing 4 background ShopItems and replace with 
+these 10 (keep all other SHOP_ITEMS unchanged):
+
+  { id: 'bg_default',   name: 'Default',     description: 'Classic dark theme — always free',         price: 0,   category: 'background', icon: 'contrast-outline' },
+  { id: 'bg_midnight',  name: 'Midnight',    description: 'Deep space with distant stars',             price: 80,  category: 'background', icon: 'moon-outline' },
+  { id: 'bg_ocean',     name: 'Deep Ocean',  description: 'Dark teal abyss gradient',                  price: 80,  category: 'background', icon: 'water-outline' },
+  { id: 'bg_nebula',    name: 'Nebula',      description: 'Cosmic purple nebula glow',                 price: 100, category: 'background', icon: 'planet-outline' },
+  { id: 'bg_ember',     name: 'Ember',       description: 'Deep crimson fire glow',                    price: 80,  category: 'background', icon: 'flame-outline' },
+  { id: 'bg_aurora',    name: 'Aurora',      description: 'Stylish northern lights — cool & elegant',  price: 120, category: 'background', icon: 'sparkles-outline' },
+  { id: 'bg_marble',    name: 'Marble',      description: 'Classy black and gold marble luxury',       price: 150, category: 'background', icon: 'layers-outline' },
+  { id: 'bg_bauhaus',   name: 'Bauhaus',     description: 'Arty geometric bold colour blocks',         price: 150, category: 'background', icon: 'shapes-outline' },
+  { id: 'bg_neon_city', name: 'Neon City',   description: 'Crazy cyberpunk neon explosion',            price: 150, category: 'background', icon: 'business-outline' },
+  { id: 'bg_void',      name: 'Void',        description: 'Ultra stylish deep black with violet edge', price: 200, category: 'background', icon: 'radio-button-on-outline' },
+
+═══════════════════════════════════════════════
+STEP 3 — Create file constants/backgrounds.ts
+═══════════════════════════════════════════════
+
+Create a brand new file constants/backgrounds.ts with 
+this exact content:
+
+import { ViewStyle } from 'react-native';
+
+export interface BackgroundDef {
+  id: string;
+  colors: string[];
+  angle: number;
+  locations?: number[];
+}
+
+export const BACKGROUNDS: BackgroundDef[] = [
+  {
+    // Classic dark — default
+    id: 'bg_default',
+    colors: ['#0f0f1a', '#111827', '#1a2235'],
+    angle: 180,
+  },
+  {
+    // Deep space — rich dark blue with a hint of indigo
+    id: 'bg_midnight',
+    colors: ['#000008', '#05051f', '#0d0d3b', '#1a1040'],
+    angle: 180,
+    locations: [0, 0.3, 0.7, 1],
+  },
+  {
+    // Ocean abyss — near-black to deep teal
+    id: 'bg_ocean',
+    colors: ['#000d14', '#001a26', '#003845', '#005f73'],
+    angle: 180,
+    locations: [0, 0.35, 0.7, 1],
+  },
+  {
+    // Nebula — deep black to rich cosmic purple
+    id: 'bg_nebula',
+    colors: ['#07000f', '#10002b', '#3c096c', '#5a189a'],
+    angle: 175,
+    locations: [0, 0.3, 0.65, 1],
+  },
+  {
+    // Ember — near-black to deep crimson
+    id: 'bg_ember',
+    colors: ['#0a0000', '#1a0000', '#6a040f', '#9d0208'],
+    angle: 180,
+    locations: [0, 0.3, 0.7, 1],
+  },
+  {
+    // Aurora — STYLISH: cool diagonal sweep of teal, green, 
+    // electric blue — like looking up at the northern sky
+    id: 'bg_aurora',
+    colors: ['#001219', '#003d3b', '#006466', '#0a9396', '#48cae4'],
+    angle: 145,
+    locations: [0, 0.25, 0.5, 0.75, 1],
+  },
+  {
+    // Marble — CLASSY: near-black base with warm gold veins
+    // Dark luxurious black-gold like premium marble flooring
+    id: 'bg_marble',
+    colors: ['#0a0800', '#1a1200', '#2d2000', '#1a1200', '#0a0800'],
+    angle: 135,
+    locations: [0, 0.25, 0.5, 0.75, 1],
+  },
+  {
+    // Bauhaus — ARTY: bold blocked primary color geometry
+    // Inspired by Bauhaus school design — graphic & strong
+    id: 'bg_bauhaus',
+    colors: ['#1a0000', '#001a33', '#1a1a00', '#00001a'],
+    angle: 120,
+    locations: [0, 0.33, 0.66, 1],
+  },
+  {
+    // Neon City — CRAZY: full cyberpunk explosion
+    // Hot pink, electric blue, acid green — Miami Vice on overdrive
+    id: 'bg_neon_city',
+    colors: ['#0d0221', '#2d0057', '#ff00aa', '#00fff0', '#ff6600'],
+    angle: 160,
+    locations: [0, 0.2, 0.5, 0.75, 1],
+  },
+  {
+    // Void — ultra stylish: pure black fading to deep violet edge
+    // Minimalist, premium, otherworldly
+    id: 'bg_void',
+    colors: ['#000000', '#000000', '#0d0020', '#1a0040', '#2d0060'],
+    angle: 155,
+    locations: [0, 0.4, 0.65, 0.85, 1],
+  },
+];
+
+═══════════════════════════════════════════════════════════
+STEP 4 — Apply gradient to root layout
+═══════════════════════════════════════════════════════════
+
+1. Run in shell:
+   npx expo install expo-linear-gradient
+
+2. Find the root layout file (app/_layout.tsx or equivalent) 
+   — the file that wraps ALL screens.
+
+3. Add these imports at the top:
+   import { LinearGradient } from 'expo-linear-gradient';
+   import { BACKGROUNDS } from '@/constants/backgrounds';
+   import { useGame } from '@/contexts/GameContext';
+
+4. Inside the root component, get the active background:
+   const { activeBackground } = useGame();
+   const bg = BACKGROUNDS.find(b => b.id === activeBackground) 
+     ?? BACKGROUNDS[0];
+
+5. Wrap the entire content with LinearGradient:
+   <LinearGradient
+     colors={bg.colors as any}
+     angle={bg.angle}
+     useAngle={true}
+     locations={bg.locations}
+     style={{ flex: 1 }}
+   >
+     {/* all existing children unchanged */}
+   </LinearGradient>
+
+6. Confirm that GameScreen.tsx and ShopScreen.tsx containers 
+   already have backgroundColor: 'transparent' — if not, 
+   add it so the gradient shows through.
+
+═══════════════════════════════════════════════════════
+STEP 5 — Persist activeBackground in GameContext.tsx
+═══════════════════════════════════════════════════════
+
+In contexts/GameContext.tsx:
+- Confirm activeBackground is loaded from AsyncStorage 
+  on app start.
+- Confirm it is saved to AsyncStorage whenever it changes 
+  (same pattern as activePinStyle).
+- Default value must be 'bg_default' if nothing is stored.
+- Confirm that purchasing/equipping a background item 
+  correctly sets activeBackground to the item's id.
+
+═══════════════════════════════
+Do not change any game logic.
+Do not modify anything else.
+After completing all steps, list every file you modified.
+═══════════════════════════════

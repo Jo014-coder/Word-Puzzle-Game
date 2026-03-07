@@ -71,7 +71,7 @@ export default function ShopScreen() {
   const webTop = Platform.OS === 'web' ? 67 : 0;
   const webBottom = Platform.OS === 'web' ? 34 : 0;
 
-  const isOwned = (id: string) => ownedItems.includes(id);
+  const isOwned = (id: string) => id === 'bg_default' || ownedItems.includes(id);
   const isActive = (item: ShopItem) => {
     if (item.category === 'pins') return activePinStyle === item.id;
     if (item.category === 'background') return activeBackground === item.id;

@@ -1,0 +1,130 @@
+Fix two ad-related bugs in this project. Do not change anything else.
+
+═══════════════════════════════════════════════════════
+BUG 1 — No interstitial ad shown before Daily Challenge
+═══════════════════════════════════════════════════════
+
+PROBLEM:
+In GameContext.tsx, the selectMode function handles the daily mode. 
+When the player has NOT yet played today and dailyHardUnlocked is 
+false, it calls launchGameWithAd('medium', mode) — which is correct.
+BUT when dailyHardUnlocked IS true, it does this:
+
+  setState(prev => ({ ...prev, gameMode: mode }));
+  return;
+
+This just sets the gameMode and returns — it never calls 
+launchGameWithAd, so NO ad is shown before the daily challenge 
+for players who have unlocked Hard daily mode.
+
+FIX:
+In selectMode, replace this block:
+
+  if (state.dailyHardUnlocked) {
+    setState(prev => ({ ...prev, gameMode: mode }));
+    return;
+  }
+  launchGameWithAd('medium', mode);
+  return;
+
+With this:
+
+  if (state.dailyHardUnlocked) {
+    // Still show ad before game, but let player pick difficulty
+    setState(prev => ({ ...prev, gameMode: mode }));
+    return;
+  }
+  launchGameWithAd('medium', mode);
+  return;
+
+WAIT — the real fix is deeper. The daily challenge ad is only 
+triggered in selectMode when dailyHardUnlocked is false. When 
+dailyHardUnlocked is true, the flow goes to selectDifficulty 
+instead (player picks medium or hard), and selectDifficulty 
+DOES call launchGameWithAd — so the ad IS shown in that path.
+
+The actual missing ad case is when dailyHardUnlocked is false 
+and the game skips directly to launchGameWithAd('medium', mode) 
+BUT the AdOverlay component never renders because adPhase is 
+set to 'interstitial' in state while no AdOverlay component is 
+mounted on the home screen.
+
+FIX — ensure AdOverlay is rendered on the home screen:
+
+1. Find the root layout or HomeScreen component.
+2. Import and render the AdOverlay component unconditionally 
+   (not only inside GameScreen), so it can show when 
+   adPhase === 'interstitial' from any screen.
+3. The AdOverlay should watch adPhase from useGame() and 
+   render whenever adPhase !== 'none'.
+4. Make sure the AdOverlay is placed at the root level 
+   (above all screens in the tree) so it is always available.
+
+═══════════════════════════════════════════════════════
+BUG 2 — Rewarded ad grants coins without watching the ad
+═══════════════════════════════════════════════════════
+
+PROBLEM:
+In GameContext.tsx, requestRewardedAd sets adPhase to 'rewarded':
+
+  const requestRewardedAd = useCallback(() => {
+    if (state.rewardedAdWatched) return;
+    setState(prev => ({ ...prev, adPhase: 'rewarded' }));
+  }, [state.rewardedAdWatched]);
+
+And completeRewardedAd grants the coins:
+
+  const completeRewardedAd = useCallback(() => {
+    setState(prev => {
+      const newCoins = prev.coins + 3;
+      persistSave({ coins: newCoins });
+      return { ...prev, coins: newCoins, adPhase: 'none', 
+               rewardedAdWatched: true, toastMessage: '+3 coins earned!', 
+               toastType: 'success' };
+    });
+  }, []);
+
+The bug is in the AdOverlay component or wherever completeRewardedAd 
+is called — it is being called immediately when the ad is requested 
+or dismissed, NOT after the ad is fully watched.
+
+FIX in the AdOverlay component:
+1. Find where completeRewardedAd is called.
+2. It must ONLY be called inside the onUserEarnedReward callback 
+   of the rewarded ad SDK — never on dismiss or on ad load.
+3. Add a guard: if the real ad fails to load or is not available, 
+   show an error toast ("Ad not available, try again") and set 
+   adPhase back to 'none' WITHOUT granting coins.
+4. The flow must be strictly:
+   - requestRewardedAd() → load ad → show ad → user watches 
+     to completion → onUserEarnedReward fires → 
+     completeRewardedAd() → coins granted
+   - If user closes early or ad fails → adPhase = 'none', 
+     NO coins granted
+
+Also add this safety check in completeRewardedAd in GameContext.tsx:
+Replace:
+
+  const completeRewardedAd = useCallback(() => {
+    setState(prev => {
+      const newCoins = prev.coins + 3;
+      ...
+
+With:
+
+  const completeRewardedAd = useCallback(() => {
+    setState(prev => {
+      // Only grant reward if we are actually in rewarded ad phase
+      if (prev.adPhase !== 'rewarded') return prev;
+      const newCoins = prev.coins + 3;
+      persistSave({ coins: newCoins });
+      return { ...prev, coins: newCoins, adPhase: 'none',
+               rewardedAdWatched: true, toastMessage: '+3 coins earned!',
+               toastType: 'success' as const };
+    });
+  }, []);
+
+═══════════════════════════════════════════════
+Do not change any game logic, shop, or UI code.
+After completing both fixes, list every file modified.
+═══════════════════════════════════════════════
