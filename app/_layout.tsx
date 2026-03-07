@@ -6,9 +6,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
-import { GameProvider, useGame } from "@/contexts/GameContext";
-import { LinearGradient } from "expo-linear-gradient";
-import { BACKGROUNDS } from "@/constants/backgrounds";
+import { GameProvider } from "@/contexts/GameContext";
 import {
   useFonts,
   Inter_400Regular,
@@ -18,26 +16,14 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 
-function ThemedBackground({ children }: { children: React.ReactNode }) {
-  const { activeBackground } = useGame();
-  const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
-
-  return (
-    <LinearGradient
-      colors={bg.colors as any}
-      angle={bg.angle}
-      useAngle={true}
-      locations={bg.locations}
-      style={{ flex: 1 }}
-    >
-      {children}
-    </LinearGradient>
-  );
-}
-
 function RootLayoutNav() {
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: 'transparent' },
+      }}
+    >
       <Stack.Screen name="index" />
     </Stack>
   );
@@ -64,9 +50,7 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <GameProvider>
-              <ThemedBackground>
-                <RootLayoutNav />
-              </ThemedBackground>
+              <RootLayoutNav />
             </GameProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
