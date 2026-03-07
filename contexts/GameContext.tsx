@@ -145,7 +145,7 @@ interface GameContextValue extends GameState {
   completeRewardedAd: () => void;
 }
 
-const STORAGE_KEY = 'griddl_v2_save';
+const STORAGE_KEY = 'griddl_v3_save';
 const GameContext = createContext<GameContextValue | null>(null);
 
 export function useGame() {
