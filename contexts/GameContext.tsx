@@ -309,7 +309,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     timeAttackNextRows: null,
     lastDailyGame: null,
     viewingDaily: false,
-    ownedItems: [],
+    ownedItems: ['bg_default'],
     activePinStyle: 'default',
     activeBackground: 'bg_default',
     adsRemoved: false,
