@@ -15,6 +15,7 @@ export default function Index() {
 
   return (
     <LinearGradient
+      key={bg.id}
       colors={bg.colors as any}
       angle={bg.angle}
       useAngle={true}
