@@ -1,0 +1,79 @@
+Fix the background default reset bug in contexts/GameContext.tsx.
+
+THE EXACT PROBLEM:
+In purchaseItem, bg_default is treated as always owned via:
+  const alreadyOwned = itemId === 'bg_default' || prev.ownedItems.includes(itemId)
+
+But bg_default has price 0, so when a player taps it in the 
+shop it hits the coin check (0 < 0 is false) and falls into 
+the purchase flow, adding it to ownedItems and setting it as 
+active — but only inconsistently.
+
+THE FIX — replace the entire purchaseItem background section:
+
+Find this block inside purchaseItem:
+
+  if (!isConsumable && alreadyOwned) {
+    if (item.category === 'pins') {
+      ...
+    }
+    if (item.category === 'background') {
+      const newBg = prev.activeBackground === itemId ? 'bg_default' : itemId;
+      persistSave({ activeBackground: newBg });
+      return { ...prev, activeBackground: newBg, ... };
+    }
+    return prev;
+  }
+
+Replace ONLY the background part inside that block with:
+
+  if (item.category === 'background') {
+    // If tapping the currently active background, go back to default
+    // If tapping another owned background, activate it
+    const newBg = prev.activeBackground === itemId ? 'bg_default' : itemId;
+    persistSave({ activeBackground: newBg });
+    return {
+      ...prev,
+      activeBackground: newBg,
+      toastMessage: newBg === 'bg_default' 
+        ? 'Default background equipped' 
+        : `${item.name} equipped!`,
+      toastType: 'success' as const,
+    };
+  }
+
+Then add this special case for bg_default BEFORE the 
+"if (prev.coins < item.price)" check:
+
+  // bg_default is always free and always available
+  if (itemId === 'bg_default') {
+    persistSave({ activeBackground: 'bg_default' });
+    return {
+      ...prev,
+      activeBackground: 'bg_default',
+      toastMessage: 'Default background equipped',
+      toastType: 'success' as const,
+    };
+  }
+
+Also make sure bg_default is in ownedItems from the start.
+In DEFAULT_SAVE, change:
+  ownedItems: [],
+To:
+  ownedItems: ['bg_default'],
+
+And in the loadSave useEffect, after setting ownedItems, 
+add this migration to ensure existing users also have it:
+
+  const savedOwned = save.ownedItems || [];
+  const ownedWithDefault = savedOwned.includes('bg_default') 
+    ? savedOwned 
+    : ['bg_default', ...savedOwned];
+
+Then use ownedWithDefault instead of save.ownedItems 
+when setting state.
+
+─────────────────────────────────────────
+Do not change any other logic or any file.
+After completing the fix, list files modified.
+─────────────────────────────────────────

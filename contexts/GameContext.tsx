@@ -64,7 +64,7 @@ const DEFAULT_SAVE: SaveData = {
   dailyHardUnlocked: false,
   timeAttackLosses: 0,
   lastDailyGame: null,
-  ownedItems: [],
+  ownedItems: ['bg_default'],
   activePinStyle: 'default',
   activeBackground: 'bg_default',
   adsRemoved: false,
@@ -356,7 +356,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         dailyHardUnlocked: save.dailyHardUnlocked || false,
         timeAttackLosses: save.timeAttackLosses || 0,
         lastDailyGame: save.lastDailyGame || null,
-        ownedItems: save.ownedItems || [],
+        ownedItems: (save.ownedItems || []).includes('bg_default') ? (save.ownedItems || []) : ['bg_default', ...(save.ownedItems || [])],
         activePinStyle: save.activePinStyle || 'default',
         activeBackground: (save.activeBackground === 'default' || !save.activeBackground) ? 'bg_default' : save.activeBackground,
         adsRemoved: save.adsRemoved || false,
@@ -1019,6 +1019,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return { ...prev, activeBackground: newBg, toastMessage: newBg === 'bg_default' ? 'Default background equipped' : `${item.name} equipped!`, toastType: 'success' as const };
         }
         return prev;
+      }
+
+      if (itemId === 'bg_default') {
+        persistSave({ activeBackground: 'bg_default' });
+        return {
+          ...prev,
+          activeBackground: 'bg_default',
+          toastMessage: 'Default background equipped',
+          toastType: 'success' as const,
+        };
       }
 
       if (prev.coins < item.price) {
