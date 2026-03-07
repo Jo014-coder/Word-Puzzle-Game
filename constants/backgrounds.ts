@@ -10,7 +10,7 @@ export interface BackgroundDef {
 export const BACKGROUNDS: BackgroundDef[] = [
   {
     id: 'bg_default',
-    colors: ['#0f0f1a', '#111827', '#1a2235'],
+    colors: ['#111827', '#111827'],
     angle: 180,
   },
   {
