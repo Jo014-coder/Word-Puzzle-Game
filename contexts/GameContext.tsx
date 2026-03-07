@@ -235,18 +235,21 @@ function createEmptyRows(config: typeof DIFFICULTY_CONFIG.easy): GuessRow[] {
   }));
 }
 
+let memoryCache: Partial<SaveData> = {};
+
 async function loadSave(): Promise<SaveData> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
-    if (raw) return { ...DEFAULT_SAVE, ...JSON.parse(raw) };
+    if (raw) return { ...DEFAULT_SAVE, ...JSON.parse(raw), ...memoryCache };
   } catch {}
-  return { ...DEFAULT_SAVE };
+  return { ...DEFAULT_SAVE, ...memoryCache };
 }
 
 async function persistSave(data: Partial<SaveData>) {
   try {
+    memoryCache = { ...memoryCache, ...data };
     const existing = await loadSave();
-    const merged = { ...existing, ...data };
+    const merged = { ...existing, ...memoryCache };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
   } catch {}
 }

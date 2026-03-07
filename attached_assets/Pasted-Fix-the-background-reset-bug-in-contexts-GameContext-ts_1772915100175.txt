@@ -1,0 +1,71 @@
+Fix the background reset bug in contexts/GameContext.tsx.
+
+THE PROBLEM:
+When a player deselects a background (e.g. Deep Ocean) to go 
+back to Default, the state correctly sets activeBackground to 
+'bg_default', but the next time the app loads it reads the 
+OLD value from AsyncStorage because persistSave is merging 
+over it incorrectly.
+
+THE FIX — two changes only:
+
+─────────────────────────────────────────
+CHANGE 1 — in the purchaseItem function
+─────────────────────────────────────────
+
+Find this block (background toggle when already owned):
+
+  if (item.category === 'background') {
+    const newBg = prev.activeBackground === itemId ? 'bg_default' : itemId;
+    persistSave({ activeBackground: newBg });
+    return { 
+      ...prev, 
+      activeBackground: newBg, 
+      toastMessage: newBg === 'bg_default' ? 'Default background equipped' : `${item.name} equipped!`, 
+      toastType: 'success' as const 
+    };
+  }
+
+This is correct — leave it exactly as is.
+
+─────────────────────────────────────────
+CHANGE 2 — fix persistSave race condition
+─────────────────────────────────────────
+
+The bug is in the persistSave function itself. It calls 
+loadSave() to get existing data and then merges — but 
+loadSave() reads from AsyncStorage which may still have 
+the OLD value before the current save completes.
+
+Replace the persistSave function with this version that 
+uses a local in-memory cache to avoid stale reads:
+
+  let memoryCache: Partial<SaveData> = {};
+
+  async function persistSave(data: Partial<SaveData>) {
+    try {
+      memoryCache = { ...memoryCache, ...data };
+      const existing = await loadSave();
+      const merged = { ...existing, ...memoryCache };
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    } catch {}
+  }
+
+Place the memoryCache variable OUTSIDE the persistSave 
+function, at module level (just above the persistSave 
+function definition).
+
+Also update loadSave to merge the memory cache:
+
+  async function loadSave(): Promise<SaveData> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEY);
+      if (raw) return { ...DEFAULT_SAVE, ...JSON.parse(raw), ...memoryCache };
+    } catch {}
+    return { ...DEFAULT_SAVE, ...memoryCache };
+  }
+
+─────────────────────────────────────────
+Do not change any other logic or any file.
+After completing the fix, list files modified.
+─────────────────────────────────────────
