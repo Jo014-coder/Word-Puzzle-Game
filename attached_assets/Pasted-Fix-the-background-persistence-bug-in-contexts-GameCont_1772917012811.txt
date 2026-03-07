@@ -1,0 +1,54 @@
+Fix the background persistence bug in contexts/GameContext.tsx.
+
+THE PROBLEM:
+The phone has 'bg_ocean' saved in AsyncStorage as activeBackground 
+from a previous session. On app load, loadSave reads this value 
+and sets it as active — overriding the user's intention to use 
+the default background.
+
+THE ONLY FIX NEEDED — one line change in the loadSave useEffect:
+
+Find this line:
+  activeBackground: save.activeBackground === 'default' || !save.activeBackground 
+    ? 'bg_default' 
+    : save.activeBackground,
+
+Replace it with:
+  activeBackground: 'bg_default',
+
+This resets ALL users to the default background on next load, 
+which is the correct behaviour since the background system 
+was just rebuilt. After this one-time reset, the normal 
+purchaseItem toggle logic will correctly save and restore 
+the user's chosen background going forward.
+
+Also change the STORAGE_KEY constant from:
+  const STORAGE_KEY = 'griddl_v2_save';
+To:
+  const STORAGE_KEY = 'griddl_v3_save';
+
+This forces a clean read from AsyncStorage for all users, 
+wiping any corrupted background values from previous versions. 
+Coins, streaks and other progress will reset too — but this 
+is necessary to clear the corrupted state. Only do this change 
+if you agree to reset user data.
+
+ALTERNATIVE (if you do NOT want to reset user data):
+Keep STORAGE_KEY unchanged but add this after setting 
+activeBackground in the loadSave useEffect:
+
+  // Force bg_default if saved value is not a valid background id
+  const validBgIds = [
+    'bg_default','bg_midnight','bg_ocean','bg_nebula','bg_ember',
+    'bg_aurora','bg_marble','bg_bauhaus','bg_neon_city','bg_void'
+  ];
+  const savedBg = save.activeBackground;
+  const resolvedBg = validBgIds.includes(savedBg) ? savedBg : 'bg_default';
+
+Then use resolvedBg instead of save.activeBackground 
+when setting activeBackground in setState.
+
+Use the ALTERNATIVE approach to preserve user data.
+
+Do not change any other file or logic.
+Confirm which file was modified.

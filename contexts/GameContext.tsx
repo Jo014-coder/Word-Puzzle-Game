@@ -358,7 +358,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         lastDailyGame: save.lastDailyGame || null,
         ownedItems: (save.ownedItems || []).includes('bg_default') ? (save.ownedItems || []) : ['bg_default', ...(save.ownedItems || [])],
         activePinStyle: save.activePinStyle || 'default',
-        activeBackground: (save.activeBackground === 'default' || !save.activeBackground) ? 'bg_default' : save.activeBackground,
+        activeBackground: (['bg_default','bg_midnight','bg_ocean','bg_nebula','bg_ember','bg_aurora','bg_marble','bg_bauhaus','bg_neon_city','bg_void','bg_obsidian'].includes(save.activeBackground) ? save.activeBackground : 'bg_default'),
         adsRemoved: save.adsRemoved || false,
       }));
 
