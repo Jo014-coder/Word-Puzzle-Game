@@ -1,0 +1,122 @@
+The background gradient system exists in constants/backgrounds.ts 
+but is never applied to the app. Fix this completely in two steps.
+
+═══════════════════════════════════════════════════
+STEP 1 — Wire the gradient into app/_layout.tsx
+═══════════════════════════════════════════════════
+
+Replace the entire content of app/_layout.tsx with this:
+
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Stack } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import React, { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { queryClient } from "@/lib/query-client";
+import { GameProvider, useGame } from "@/contexts/GameContext";
+import { LinearGradient } from "expo-linear-gradient";
+import { BACKGROUNDS } from "@/constants/backgrounds";
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+} from "@expo-google-fonts/inter";
+
+SplashScreen.preventAutoHideAsync();
+
+function ThemedBackground({ children }: { children: React.ReactNode }) {
+  const { activeBackground } = useGame();
+  const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
+
+  return (
+    <LinearGradient
+      colors={bg.colors as any}
+      angle={bg.angle}
+      useAngle={true}
+      locations={bg.locations}
+      style={{ flex: 1 }}
+    >
+      {children}
+    </LinearGradient>
+  );
+}
+
+function RootLayoutNav() {
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <KeyboardProvider>
+            <GameProvider>
+              <ThemedBackground>
+                <RootLayoutNav />
+              </ThemedBackground>
+            </GameProvider>
+          </KeyboardProvider>
+        </GestureHandlerRootView>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
+
+Note: ThemedBackground is a separate component INSIDE GameProvider 
+so it can call useGame(). It must NOT be placed outside GameProvider.
+
+═══════════════════════════════════════════════════
+STEP 2 — Fix the 'default' vs 'bg_default' mismatch
+═══════════════════════════════════════════════════
+
+In contexts/GameContext.tsx, make these 4 changes:
+
+1. In DEFAULT_SAVE object:
+   Change: activeBackground: 'default',
+   To:     activeBackground: 'bg_default',
+
+2. In the initial useState:
+   Change: activeBackground: 'default',
+   To:     activeBackground: 'bg_default',
+
+3. In the loadSave useEffect, replace:
+   activeBackground: save.activeBackground || 'default',
+   With:
+   activeBackground: (save.activeBackground === 'default' || !save.activeBackground) 
+     ? 'bg_default' 
+     : save.activeBackground,
+
+4. In the purchaseItem function, replace:
+   const newBg = prev.activeBackground === itemId ? 'default' : itemId;
+   With:
+   const newBg = prev.activeBackground === itemId ? 'bg_default' : itemId;
+
+═══════════════════════════════════════════════════
+Also run this in the shell if not already installed:
+npx expo install expo-linear-gradient
+
+Do not change any other file or any game logic.
+After completing both steps, list every file modified.
+═══════════════════════════════════════════════════

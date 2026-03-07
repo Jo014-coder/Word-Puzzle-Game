@@ -355,7 +355,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         lastDailyGame: save.lastDailyGame || null,
         ownedItems: save.ownedItems || [],
         activePinStyle: save.activePinStyle || 'default',
-        activeBackground: save.activeBackground || 'bg_default',
+        activeBackground: (save.activeBackground === 'default' || !save.activeBackground) ? 'bg_default' : save.activeBackground,
         adsRemoved: save.adsRemoved || false,
       }));
 

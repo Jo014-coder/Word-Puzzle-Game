@@ -1,12 +1,14 @@
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
-import { GameProvider } from "@/contexts/GameContext";
+import { GameProvider, useGame } from "@/contexts/GameContext";
+import { LinearGradient } from "expo-linear-gradient";
+import { BACKGROUNDS } from "@/constants/backgrounds";
 import {
   useFonts,
   Inter_400Regular,
@@ -15,6 +17,23 @@ import {
 } from "@expo-google-fonts/inter";
 
 SplashScreen.preventAutoHideAsync();
+
+function ThemedBackground({ children }: { children: React.ReactNode }) {
+  const { activeBackground } = useGame();
+  const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
+
+  return (
+    <LinearGradient
+      colors={bg.colors as any}
+      angle={bg.angle}
+      useAngle={true}
+      locations={bg.locations}
+      style={{ flex: 1 }}
+    >
+      {children}
+    </LinearGradient>
+  );
+}
 
 function RootLayoutNav() {
   return (
@@ -45,7 +64,9 @@ export default function RootLayout() {
         <GestureHandlerRootView style={{ flex: 1 }}>
           <KeyboardProvider>
             <GameProvider>
-              <RootLayoutNav />
+              <ThemedBackground>
+                <RootLayoutNav />
+              </ThemedBackground>
             </GameProvider>
           </KeyboardProvider>
         </GestureHandlerRootView>
