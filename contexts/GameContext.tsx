@@ -692,7 +692,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
         if (isTimeAttack) {
           const newTimeAttackScore = prev.timeAttackScore + 1;
-          const newTime = prev.timeLeft + TIME_ATTACK_BONUS;
+          const newTime = prev.timeLeft + TIME_ATTACK_BONUS[prev.effectiveDifficulty || prev.difficulty || 'easy'];
           const newTimeAttackCoins = prev.timeAttackCoins + actualCoinsEarned;
 
           const newConfig = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
