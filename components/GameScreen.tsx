@@ -62,7 +62,7 @@ function TopBar() {
 }
 
 function ProgressBar() {
-  const { currentRow, gameMode, timeLeft, effectiveDifficulty, difficulty } = useGame();
+  const { currentRow, gameMode, timeLeft, effectiveDifficulty, difficulty, phase } = useGame();
   const diff = effectiveDifficulty || difficulty || 'easy';
   const config = DIFFICULTY_CONFIG[diff];
 
@@ -102,7 +102,11 @@ function ProgressBar() {
         <Text style={styles.timerText}>{timeLeft}s</Text>
       )}
       {gameMode !== 'timeAttack' && (
-        <Text style={styles.attemptsText}>{config.maxAttempts - currentRow} left</Text>
+        <Text style={styles.attemptsText}>
+          {phase === 'won'
+            ? `Solved in ${currentRow} / ${config.maxAttempts}`
+            : `${config.maxAttempts - currentRow} left`}
+        </Text>
       )}
     </View>
   );
