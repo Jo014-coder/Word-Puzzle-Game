@@ -63,8 +63,8 @@ export const BACKGROUNDS: BackgroundDef[] = [
   },
   {
     id: 'bg_void',
-    colors: ['#000000', '#000000', '#0d0020', '#1a0040', '#2d0060'],
-    angle: 155,
-    locations: [0, 0.4, 0.65, 0.85, 1],
+    colors: ['#000008', '#03051a', '#080d3a', '#0d1660', '#1a2080', '#03020f'],
+    angle: 140,
+    locations: [0, 0.12, 0.35, 0.58, 0.78, 1],
   },
 ];
