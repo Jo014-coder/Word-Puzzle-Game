@@ -17,8 +17,8 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
     codeLength: 4,
     maxAttempts: 8,
     colorCount: 6,
-    hintTokens: 1,
-    description: '4 pegs  |  8 attempts  |  1 hint',
+    hintTokens: 0,
+    description: '4 pegs  |  8 attempts',
     hasFakeFeedback: false,
   },
   medium: {
@@ -76,10 +76,10 @@ export interface ShopItem {
 }
 
 export const SHOP_ITEMS: ShopItem[] = [
-  { id: 'hint', name: 'Hint Token', description: 'Reveals one correct peg', price: 30, category: 'consumable', icon: 'bulb-outline' },
+  { id: 'hint', name: 'Hint Token', description: 'Reveals one correct peg', price: 10, category: 'consumable', icon: 'bulb-outline' },
   { id: 'shield', name: 'Streak Shield', description: 'Protects your streak once', price: 40, category: 'consumable', icon: 'shield-checkmark-outline' },
   { id: 'extreme', name: 'Extreme Mode', description: '7 pegs · 4 tries · 1 fake pin', price: 250, category: 'unlock', icon: 'skull-outline' },
-  { id: 'pins_neon', name: 'Neon Glow', description: 'Glowing neon feedback pins', price: 120, category: 'pins', icon: 'flash-outline' },
+  { id: 'pins_neon', name: 'Neon Glow', description: 'Glowing neon pin style', price: 120, category: 'pins', icon: 'flash-outline' },
   { id: 'pins_crystal', name: 'Crystal', description: 'Sparkling crystal pins', price: 180, category: 'pins', icon: 'diamond-outline' },
   { id: 'bg_default', name: 'Default', description: 'Classic dark theme — always free', price: 0, category: 'background', icon: 'contrast-outline' },
   { id: 'bg_midnight', name: 'Midnight', description: 'Deep space with distant stars', price: 80, category: 'background', icon: 'moon-outline' },

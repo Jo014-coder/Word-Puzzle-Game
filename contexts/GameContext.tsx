@@ -450,7 +450,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       isTimerRunning: isTimeAttack,
       streak: save.streak,
       coins: save.coins,
-      hintTokens: save.hintTokens + config.hintTokens,
+      hintTokens: save.hintTokens,
       streakShield: save.streakShield,
       gamesPlayed: save.gamesPlayed,
       gamesWon: save.gamesWon,
@@ -462,7 +462,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const launchGameWithAd = useCallback((difficulty: Difficulty, mode: GameMode) => {
-    if (state.adsRemoved) {
+    if (state.adsRemoved || mode === 'endless') {
       loadSave().then(save => startGame(difficulty, mode, save));
     } else {
       setState(prev => ({
@@ -657,7 +657,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
 
         const totalCoinsEarned = coinReward + bonusCoins;
-        const newCoins = prev.coins + totalCoinsEarned;
+        const actualCoinsEarned = prev.gameMode === 'endless' ? 0 : totalCoinsEarned;
+        const newCoins = prev.coins + actualCoinsEarned;
         const newGamesWon = prev.gamesWon + 1;
         const newGamesPlayed = prev.gamesPlayed + 1;
         const attemptMsg = WIN_MESSAGES[Math.min(prev.currentRow, 7)] || 'Well done!';
@@ -692,7 +693,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (isTimeAttack) {
           const newTimeAttackScore = prev.timeAttackScore + 1;
           const newTime = prev.timeLeft + TIME_ATTACK_BONUS;
-          const newTimeAttackCoins = prev.timeAttackCoins + totalCoinsEarned;
+          const newTimeAttackCoins = prev.timeAttackCoins + actualCoinsEarned;
 
           const newConfig = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
           const newSecret = generateCode(newConfig, false);
@@ -711,12 +712,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
             goldPegsUnlocked: newGold,
             obsidianTheme: newObsidian,
             consecutiveLosses: 0,
-            coinsEarned: totalCoinsEarned,
+            coinsEarned: actualCoinsEarned,
             timeAttackScore: newTimeAttackScore,
             timeAttackCoins: newTimeAttackCoins,
             timeLeft: newTime,
             endlessWinStreak: newEndlessWinStreak,
-            toastMessage: comboMultiplier > 1 ? `${comboMultiplier}x combo! +${totalCoinsEarned}` : `+${totalCoinsEarned} coins`,
+            toastMessage: comboMultiplier > 1 ? `${comboMultiplier}x combo! +${actualCoinsEarned}` : `+${actualCoinsEarned} coins`,
             toastType: 'success' as const,
             fakeFeedbackUsed: false,
             secretCode: newSecret,
@@ -746,7 +747,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           goldPegsUnlocked: newGold,
           obsidianTheme: newObsidian,
           consecutiveLosses: 0,
-          coinsEarned: totalCoinsEarned,
+          coinsEarned: actualCoinsEarned,
           toastMessage: milestoneMsg || attemptMsg,
           toastType: milestoneMsg ? 'milestone' as const : 'success' as const,
           showConfetti: true,

@@ -201,21 +201,21 @@ export default function HomeScreen() {
           )}
         </ModeButton>
         <ModeButton
-          mode="endless"
-          icon="infinity"
-          label="Endless Mode"
-          description="Practice and train. Build your streak."
-          selected={gameMode === 'endless'}
-          onPress={() => selectMode('endless')}
-          delay={200}
-        />
-        <ModeButton
           mode="timeAttack"
           icon="timer-outline"
           label="Time Attack"
           description="60 seconds. Solve as many as you can."
           selected={gameMode === 'timeAttack'}
           onPress={() => selectMode('timeAttack')}
+          delay={200}
+        />
+        <ModeButton
+          mode="endless"
+          icon="infinity"
+          label="Endless Mode"
+          description="Practice and train. Build your streak."
+          selected={gameMode === 'endless'}
+          onPress={() => selectMode('endless')}
           delay={300}
         />
       </View>

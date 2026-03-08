@@ -1,0 +1,120 @@
+Make the following fixes. Do not change anything else.
+
+═══════════════════════════════════════════════
+FIX 1 — constants/game.ts: Neon Glow description
+═══════════════════════════════════════════════
+
+Find:
+  { id: 'pins_neon', name: 'Neon Glow', description: 'Glowing neon feedback pins', ... }
+
+Replace description with:
+  'Glowing neon pin style'
+
+═══════════════════════════════════════════════
+FIX 2 — constants/game.ts: Hint Token price + no free hint
+═══════════════════════════════════════════════
+
+Find:
+  { id: 'hint', name: 'Hint Token', description: 'Reveals one correct peg', price: 30, ... }
+
+Change price from 30 to 10.
+
+In contexts/GameContext.tsx, find the startGame function.
+Find:
+  hintTokens: save.hintTokens + config.hintTokens,
+Replace with:
+  hintTokens: save.hintTokens,
+
+In constants/game.ts, set hintTokens to 0 for ALL 
+difficulties including easy:
+  easy: { ..., hintTokens: 0, ... }
+
+═══════════════════════════════════════════════════════
+FIX 3 — app/index.tsx: Reorder modes only
+═══════════════════════════════════════════════════════
+
+Reorder the three ModeButton components so the order is:
+  1. Daily Challenge (stays first)
+  2. Time Attack (moves to second)
+  3. Endless Mode (moves to third)
+
+Do NOT change any labels, descriptions or anything else.
+
+═══════════════════════════════════════════════════════
+FIX 4 — No ads and no coins in Endless mode
+═══════════════════════════════════════════════════════
+
+In contexts/GameContext.tsx:
+
+A) In launchGameWithAd, skip the ad for endless mode:
+
+  const launchGameWithAd = useCallback((difficulty: Difficulty, mode: GameMode) => {
+    if (state.adsRemoved || mode === 'endless') {
+      loadSave().then(save => startGame(difficulty, mode, save));
+    } else {
+      setState(prev => ({
+        ...prev,
+        adPhase: 'interstitial',
+        pendingGameStart: { difficulty, mode },
+      }));
+    }
+  }, [state.adsRemoved, startGame]);
+
+B) In the submitGuess win block, skip coin rewards for endless.
+After:
+  const totalCoinsEarned = coinReward + bonusCoins;
+Add:
+  const actualCoinsEarned = prev.gameMode === 'endless' ? 0 : totalCoinsEarned;
+
+Replace ALL uses of totalCoinsEarned in the win state update
+(coins, coinsEarned, toastMessage) with actualCoinsEarned:
+  const newCoins = prev.coins + actualCoinsEarned;
+
+C) Find the component that renders the "Watch ad for +3 coins"
+rewarded ad button and wrap it with:
+  {gameMode !== 'endless' && ( ... )}
+
+═══════════════════════════════════════════════════════
+FIX 5 — AdOverlay.tsx: Fix ads not working
+═══════════════════════════════════════════════════════
+
+In app/_layout.tsx, update ThemedBackground to render 
+AdOverlay at root level:
+
+  import AdOverlay from '@/components/AdOverlay';
+
+  function ThemedBackground({ children }: { children: React.ReactNode }) {
+    const { activeBackground, adPhase, dismissAd, completeRewardedAd } = useGame();
+    const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
+
+    return (
+      <LinearGradient
+        colors={bg.colors as any}
+        angle={bg.angle}
+        useAngle={true}
+        locations={bg.locations}
+        style={{ flex: 1 }}
+      >
+        {children}
+        {adPhase === 'interstitial' && (
+          <AdOverlay
+            type="interstitial"
+            onComplete={dismissAd}
+            onDismiss={dismissAd}
+          />
+        )}
+        {adPhase === 'rewarded' && (
+          <AdOverlay
+            type="rewarded"
+            onComplete={completeRewardedAd}
+            onDismiss={dismissAd}
+          />
+        )}
+      </LinearGradient>
+    );
+  }
+
+═══════════════════════════════════════════════
+Do not change any other file or logic.
+After all fixes, list every file modified.
+═══════════════════════════════════════════════

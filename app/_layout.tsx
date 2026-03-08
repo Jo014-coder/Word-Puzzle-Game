@@ -4,9 +4,12 @@ import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { LinearGradient } from "expo-linear-gradient";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
-import { GameProvider } from "@/contexts/GameContext";
+import { GameProvider, useGame } from "@/contexts/GameContext";
+import { BACKGROUNDS } from "@/constants/backgrounds";
+import AdOverlay from "@/components/AdOverlay";
 import {
   useFonts,
   Inter_400Regular,
@@ -16,16 +19,50 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 
+function ThemedBackground({ children }: { children: React.ReactNode }) {
+  const { activeBackground, adPhase, dismissAd, completeRewardedAd } = useGame();
+  const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
+
+  return (
+    <LinearGradient
+      key={bg.id}
+      colors={bg.colors as any}
+      angle={bg.angle}
+      useAngle={true}
+      locations={bg.locations}
+      style={{ flex: 1 }}
+    >
+      {children}
+      {adPhase === 'interstitial' && (
+        <AdOverlay
+          type="interstitial"
+          onComplete={dismissAd}
+          onDismiss={dismissAd}
+        />
+      )}
+      {adPhase === 'rewarded' && (
+        <AdOverlay
+          type="rewarded"
+          onComplete={completeRewardedAd}
+          onDismiss={dismissAd}
+        />
+      )}
+    </LinearGradient>
+  );
+}
+
 function RootLayoutNav() {
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: 'transparent' },
-      }}
-    >
-      <Stack.Screen name="index" />
-    </Stack>
+    <ThemedBackground>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: 'transparent' },
+        }}
+      >
+        <Stack.Screen name="index" />
+      </Stack>
+    </ThemedBackground>
   );
 }
 

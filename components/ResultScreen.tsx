@@ -160,7 +160,7 @@ export default function ResultScreen() {
           </View>
         )}
 
-        {!rewardedAdWatched && (
+        {gameMode !== 'endless' && !rewardedAdWatched && (
           <Pressable
             onPress={requestRewardedAd}
             style={({ pressed }) => [styles.rewardedAdButton, { opacity: pressed ? 0.8 : 1 }]}
