@@ -1,0 +1,88 @@
+I have three image files to use as backgrounds for bg_void, 
+bg_marble and bg_bauhaus. The files are:
+  assets/backgrounds/void.jpg
+  assets/backgrounds/marble.jpg
+  assets/backgrounds/bauhaus.jpg
+
+Please do the following:
+
+═══════════════════════════════════════
+STEP 1 — Create assets/backgrounds/ folder
+═══════════════════════════════════════
+
+Create the folder assets/backgrounds/ in the project root 
+if it does not already exist.
+I will manually upload the three image files into it.
+
+═══════════════════════════════════════
+STEP 2 — Update constants/backgrounds.ts
+═══════════════════════════════════════
+
+Add an optional imageSource field to the BackgroundDef interface:
+
+  export interface BackgroundDef {
+    id: string;
+    colors: string[];
+    angle: number;
+    locations?: number[];
+    imageSource?: any;
+  }
+
+Then add imageSource to these three entries:
+
+  { id: 'bg_void', ..., imageSource: require('@/assets/backgrounds/void.jpg') },
+  { id: 'bg_marble', ..., imageSource: require('@/assets/backgrounds/marble.jpg') },
+  { id: 'bg_bauhaus', ..., imageSource: require('@/assets/backgrounds/bauhaus.jpg') },
+
+Keep all other fields (colors, angle, locations) unchanged 
+on those entries.
+
+═══════════════════════════════════════
+STEP 3 — Update app/_layout.tsx
+═══════════════════════════════════════
+
+In the ThemedBackground component, add ImageBackground support.
+Import ImageBackground from react-native.
+
+Replace the return statement with this logic:
+
+  if (bg.imageSource) {
+    return (
+      <ImageBackground
+        source={bg.imageSource}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+      >
+        {children}
+        {adPhase === 'interstitial' && (
+          <AdOverlay type="interstitial" onComplete={dismissAd} onDismiss={dismissAd} />
+        )}
+        {adPhase === 'rewarded' && (
+          <AdOverlay type="rewarded" onComplete={completeRewardedAd} onDismiss={dismissAd} />
+        )}
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <LinearGradient
+      colors={bg.colors as any}
+      angle={bg.angle}
+      useAngle={true}
+      locations={bg.locations}
+      style={{ flex: 1 }}
+    >
+      {children}
+      {adPhase === 'interstitial' && (
+        <AdOverlay type="interstitial" onComplete={dismissAd} onDismiss={dismissAd} />
+      )}
+      {adPhase === 'rewarded' && (
+        <AdOverlay type="rewarded" onComplete={completeRewardedAd} onDismiss={dismissAd} />
+      )}
+    </LinearGradient>
+  );
+
+═══════════════════════════════════════
+Do not change any other file or logic.
+After completing all steps, list every file modified.
+═══════════════════════════════════════

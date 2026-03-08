@@ -2,11 +2,14 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import React, { useEffect } from "react";
+import { ImageBackground } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
+import { LinearGradient } from "expo-linear-gradient";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { queryClient } from "@/lib/query-client";
 import { GameProvider, useGame } from "@/contexts/GameContext";
+import { BACKGROUNDS } from "@/constants/backgrounds";
 import AdOverlay from "@/components/AdOverlay";
 import {
   useFonts,
@@ -17,32 +20,53 @@ import {
 
 SplashScreen.preventAutoHideAsync();
 
-function AdOverlayRoot() {
-  const { adPhase, dismissAd, completeRewardedAd } = useGame();
+function ThemedBackground({ children }: { children: React.ReactNode }) {
+  const { activeBackground, adPhase, dismissAd, completeRewardedAd } = useGame();
+  const bg = BACKGROUNDS.find(b => b.id === activeBackground) ?? BACKGROUNDS[0];
 
-  return (
+  const adOverlays = (
     <>
       {adPhase === 'interstitial' && (
-        <AdOverlay
-          type="interstitial"
-          onComplete={dismissAd}
-          onDismiss={dismissAd}
-        />
+        <AdOverlay type="interstitial" onComplete={dismissAd} onDismiss={dismissAd} />
       )}
       {adPhase === 'rewarded' && (
-        <AdOverlay
-          type="rewarded"
-          onComplete={completeRewardedAd}
-          onDismiss={dismissAd}
-        />
+        <AdOverlay type="rewarded" onComplete={completeRewardedAd} onDismiss={dismissAd} />
       )}
     </>
+  );
+
+  if (bg.imageSource) {
+    return (
+      <ImageBackground
+        key={bg.id}
+        source={bg.imageSource}
+        style={{ flex: 1 }}
+        resizeMode="cover"
+      >
+        {children}
+        {adOverlays}
+      </ImageBackground>
+    );
+  }
+
+  return (
+    <LinearGradient
+      key={bg.id}
+      colors={bg.colors as any}
+      angle={bg.angle}
+      useAngle={true}
+      locations={bg.locations}
+      style={{ flex: 1 }}
+    >
+      {children}
+      {adOverlays}
+    </LinearGradient>
   );
 }
 
 function RootLayoutNav() {
   return (
-    <>
+    <ThemedBackground>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -51,8 +75,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="index" />
       </Stack>
-      <AdOverlayRoot />
-    </>
+    </ThemedBackground>
   );
 }
 

@@ -1,10 +1,9 @@
-import { ViewStyle } from 'react-native';
-
 export interface BackgroundDef {
   id: string;
   colors: string[];
   angle: number;
   locations?: number[];
+  imageSource?: any;
 }
 
 export const BACKGROUNDS: BackgroundDef[] = [
@@ -48,12 +47,14 @@ export const BACKGROUNDS: BackgroundDef[] = [
     colors: ['#0a0800', '#1a1200', '#2d2000', '#1a1200', '#0a0800'],
     angle: 135,
     locations: [0, 0.25, 0.5, 0.75, 1],
+    imageSource: require('@/assets/backgrounds/marble.jpg'),
   },
   {
     id: 'bg_bauhaus',
     colors: ['#1a0000', '#001a33', '#1a1a00', '#00001a'],
     angle: 120,
     locations: [0, 0.33, 0.66, 1],
+    imageSource: require('@/assets/backgrounds/bauhaus.jpg'),
   },
   {
     id: 'bg_neon_city',
@@ -66,5 +67,6 @@ export const BACKGROUNDS: BackgroundDef[] = [
     colors: ['#000008', '#03051a', '#080d3a', '#0d1660', '#1a2080', '#03020f'],
     angle: 140,
     locations: [0, 0.12, 0.35, 0.58, 0.78, 1],
+    imageSource: require('@/assets/backgrounds/void.jpg'),
   },
 ];
