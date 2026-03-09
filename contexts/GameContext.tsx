@@ -267,6 +267,7 @@ const haptic = (type: 'light' | 'medium' | 'success' | 'error' | 'warning') => {
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastAdShownRef = useRef<number>(0);
 
   const [state, setState] = useState<GameState>({
     screen: 'home',
@@ -465,11 +466,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (state.adsRemoved || mode === 'endless') {
       loadSave().then(save => startGame(difficulty, mode, save));
     } else {
-      setState(prev => ({
-        ...prev,
-        adPhase: 'interstitial',
-        pendingGameStart: { difficulty, mode },
-      }));
+      const now = Date.now();
+      const cooldown = 3 * 60 * 1000;
+      if (now - lastAdShownRef.current > cooldown) {
+        lastAdShownRef.current = now;
+        setState(prev => ({ ...prev, adPhase: 'interstitial', pendingGameStart: { difficulty, mode } }));
+      } else {
+        loadSave().then(save => startGame(difficulty, mode, save));
+      }
     }
   }, [state.adsRemoved, startGame]);
 
