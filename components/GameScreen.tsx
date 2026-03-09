@@ -104,7 +104,7 @@ function ProgressBar() {
       {gameMode !== 'timeAttack' && (
         <Text style={styles.attemptsText}>
           {phase === 'won'
-            ? `Solved in ${currentRow} / ${config.maxAttempts}`
+            ? `Solved in ${currentRow + 1} / ${config.maxAttempts}`
             : `${config.maxAttempts - currentRow} left`}
         </Text>
       )}
