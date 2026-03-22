@@ -10,7 +10,7 @@ import { useEffect, useRef } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
-import { DIFFICULTY_CONFIG } from '@/constants/game';
+import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS } from '@/constants/game';
 import GuessRowView from './GuessRowView';
 import ColorPeg from './ColorPeg';
 import Toast from './Toast';
@@ -64,7 +64,10 @@ function TopBar() {
 function ProgressBar() {
   const { currentRow, gameMode, timeLeft, effectiveDifficulty, difficulty, phase } = useGame();
   const diff = effectiveDifficulty || difficulty || 'easy';
-  const config = DIFFICULTY_CONFIG[diff];
+  const baseConfig = DIFFICULTY_CONFIG[diff];
+  const config = gameMode === 'timeAttack'
+    ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
+    : baseConfig;
 
   const progress = useSharedValue(0);
   const timeProgress = useSharedValue(1);
@@ -155,10 +158,13 @@ function ColorPalette() {
 }
 
 export default function GameScreen() {
-  const { rows, currentRow, shakeRow, revealingRow, toastMessage, toastType, clearToast, effectiveDifficulty, difficulty, phase, viewingDaily, shareDaily, backToMenu, secretCode } = useGame();
+  const { rows, currentRow, shakeRow, revealingRow, toastMessage, toastType, clearToast, effectiveDifficulty, difficulty, phase, viewingDaily, shareDaily, backToMenu, secretCode, gameMode } = useGame();
   const insets = useSafeAreaInsets();
   const diff = effectiveDifficulty || difficulty || 'easy';
-  const config = DIFFICULTY_CONFIG[diff];
+  const baseConfig = DIFFICULTY_CONFIG[diff];
+  const config = gameMode === 'timeAttack'
+    ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
+    : baseConfig;
   const scrollRef = useRef<ScrollView>(null);
   const webTop = Platform.OS === 'web' ? 67 : 0;
   const webBottom = Platform.OS === 'web' ? 34 : 0;
