@@ -628,7 +628,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const lastPlayed = prev.lastPlayedDate;
         const isConsecutiveDay = lastPlayed === yesterday;
         const newStreak = isConsecutiveDay ? prev.streak + 1 : 1;
-        let coinReward = Math.min(8 + newStreak * 2, 30);
+
+        const DAILY_COINS = [15, 10, 8, 6, 4, 2];
+        const TIME_ATTACK_COINS: Record<string, number[]> = {
+          easy:    [6, 5, 3, 2, 2, 1],
+          medium:  [8, 6, 5, 3, 2, 2],
+          hard:    [10, 8, 6, 5, 3],
+          extreme: [15, 12, 10, 7, 5],
+        };
+        const attemptIdx = Math.min(prev.currentRow, 5);
+        let coinReward = 0;
+        if (prev.gameMode === 'daily') {
+          coinReward = DAILY_COINS[attemptIdx] ?? 2;
+        } else if (prev.gameMode === 'timeAttack') {
+          const diff = prev.effectiveDifficulty || prev.difficulty || 'easy';
+          const table = TIME_ATTACK_COINS[diff] ?? TIME_ATTACK_COINS.easy;
+          const idx = Math.min(prev.currentRow, table.length - 1);
+          coinReward = table[idx];
+        }
+
         let bonusCoins = 0;
         let milestoneMsg: string | null = null;
         let newHintTokens = prev.hintTokens;
@@ -653,12 +671,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
         }
 
         const isTimeAttack = prev.gameMode === 'timeAttack';
-        let comboMultiplier = 1;
-        if (isTimeAttack) {
-          if (prev.currentRow <= 1) comboMultiplier = 3;
-          else if (prev.currentRow <= 2) comboMultiplier = 2;
-          coinReward *= comboMultiplier;
-        }
 
         const totalCoinsEarned = coinReward + bonusCoins;
         const actualCoinsEarned = prev.gameMode === 'endless' ? 0 : totalCoinsEarned;
