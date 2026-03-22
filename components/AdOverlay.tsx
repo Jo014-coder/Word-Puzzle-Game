@@ -69,9 +69,14 @@ function SimulatedAd({ type, onComplete, onDismiss }: AdOverlayProps) {
           <Text style={styles.countdownText}>{countdown > 0 ? countdown : '✓'}</Text>
         </View>
         {watched ? (
-          <Pressable style={styles.claimButton} onPress={() => finish(true)}>
-            <Text style={styles.claimText}>Claim +3 Coins</Text>
-          </Pressable>
+          <>
+            <Pressable style={styles.claimButton} onPress={() => finish(true)}>
+              <Text style={styles.claimText}>Claim Reward</Text>
+            </Pressable>
+            <Pressable style={styles.skipButton} onPress={() => finish(false)}>
+              <Text style={styles.skipText}>Skip (no reward)</Text>
+            </Pressable>
+          </>
         ) : (
           <Text style={styles.watchingText}>Watching ad…</Text>
         )}
@@ -210,6 +215,15 @@ const styles = StyleSheet.create({
     color: '#000',
   },
   watchingText: {
+    fontSize: 13,
+    color: '#666',
+  },
+  skipButton: {
+    marginTop: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  skipText: {
     fontSize: 13,
     color: '#666',
   },
