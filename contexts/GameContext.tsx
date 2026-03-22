@@ -733,7 +733,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             timeAttackCoins: newTimeAttackCoins,
             timeLeft: newTime,
             endlessWinStreak: newEndlessWinStreak,
-            toastMessage: comboMultiplier > 1 ? `${comboMultiplier}x combo! +${actualCoinsEarned}` : `+${actualCoinsEarned} coins`,
+            toastMessage: `+${actualCoinsEarned} coins`,
             toastType: 'success' as const,
             fakeFeedbackUsed: false,
             secretCode: newSecret,

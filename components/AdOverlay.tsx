@@ -13,8 +13,8 @@ interface AdOverlayProps {
 }
 
 function SimulatedAd({ type, onComplete, onDismiss }: AdOverlayProps) {
-  const [countdown, setCountdown] = useState(type === 'interstitial' ? 3 : 5);
-  const [canSkip, setCanSkip] = useState(false);
+  const [countdown, setCountdown] = useState(3);
+  const [watched, setWatched] = useState(false);
   const calledRef = useRef(false);
 
   const finish = (rewarded: boolean) => {
@@ -32,7 +32,7 @@ function SimulatedAd({ type, onComplete, onDismiss }: AdOverlayProps) {
       setCountdown(prev => {
         if (prev <= 1) {
           clearInterval(interval);
-          setCanSkip(true);
+          setWatched(true);
           if (type === 'interstitial') {
             finish(true);
           }
@@ -68,18 +68,12 @@ function SimulatedAd({ type, onComplete, onDismiss }: AdOverlayProps) {
         <View style={styles.countdownBadge}>
           <Text style={styles.countdownText}>{countdown > 0 ? countdown : '✓'}</Text>
         </View>
-        {canSkip && (
-          <Pressable
-            style={styles.claimButton}
-            onPress={() => finish(true)}
-          >
+        {watched ? (
+          <Pressable style={styles.claimButton} onPress={() => finish(true)}>
             <Text style={styles.claimText}>Claim +3 Coins</Text>
           </Pressable>
-        )}
-        {!canSkip && (
-          <Pressable style={styles.skipButton} onPress={() => finish(false)}>
-            <Text style={styles.skipText}>Skip (no reward)</Text>
-          </Pressable>
+        ) : (
+          <Text style={styles.watchingText}>Watching ad…</Text>
         )}
       </View>
     </View>
@@ -215,11 +209,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#000',
   },
-  skipButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  skipText: {
+  watchingText: {
     fontSize: 13,
     color: '#666',
   },
