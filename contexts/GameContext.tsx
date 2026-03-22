@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useCallback, useEffect, useMemo, u
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import { Platform, Share } from 'react-native';
-import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS, SHOP_ITEMS } from '@/constants/game';
+import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS, TIME_ATTACK_MAX_ATTEMPTS, SHOP_ITEMS } from '@/constants/game';
 import Colors from '@/constants/colors';
 
 export interface PegSlot {
@@ -419,11 +419,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       hiddenReduction = true;
     }
 
-    const config = DIFFICULTY_CONFIG[effectiveDiff];
+    const baseConfig = DIFFICULTY_CONFIG[effectiveDiff];
     const isDaily = mode === 'daily';
+    const isTimeAttack = mode === 'timeAttack';
+    const config = isTimeAttack
+      ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
+      : baseConfig;
     const secret = generateCode(config, isDaily);
     const rows = createEmptyRows(config);
-    const isTimeAttack = mode === 'timeAttack';
 
     setState(prev => ({
       ...prev,
@@ -599,7 +602,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setState(prev => {
       if (prev.phase !== 'playing') return prev;
       const diff = prev.effectiveDifficulty || prev.difficulty || 'easy';
-      const config = DIFFICULTY_CONFIG[diff];
+      const baseConfig = DIFFICULTY_CONFIG[diff];
+      const config = prev.gameMode === 'timeAttack'
+        ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
+        : baseConfig;
       const currentPegs = prev.rows[prev.currentRow].pegs;
 
       if (currentPegs.some(p => p.colorIndex === null)) {
@@ -631,10 +637,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
         const DAILY_COINS = [15, 10, 8, 6, 4, 2];
         const TIME_ATTACK_COINS: Record<string, number[]> = {
-          easy:    [6, 5, 3, 2, 2, 1],
+          easy:    [6, 5, 4, 3, 2, 1],
           medium:  [8, 6, 5, 3, 2, 2],
-          hard:    [10, 8, 6, 5, 3],
-          extreme: [15, 12, 10, 7, 5],
+          hard:    [10, 8, 6, 5, 4, 3],
+          extreme: [15, 12, 10, 8, 6, 5],
         };
         const attemptIdx = Math.min(prev.currentRow, 5);
         let coinReward = 0;
@@ -711,7 +717,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
           const newTime = prev.timeLeft + TIME_ATTACK_BONUS[prev.effectiveDifficulty || prev.difficulty || 'easy'];
           const newTimeAttackCoins = prev.timeAttackCoins + actualCoinsEarned;
 
-          const newConfig = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
+          const newBaseConfig = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
+          const newConfig = { ...newBaseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS };
           const newSecret = generateCode(newConfig, false);
           const newEmptyRows = createEmptyRows(newConfig);
 

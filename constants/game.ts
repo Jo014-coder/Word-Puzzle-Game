@@ -64,6 +64,7 @@ export const WIN_MESSAGES: Record<number, string> = {
 };
 
 export const TIME_ATTACK_DURATION = 60;
+export const TIME_ATTACK_MAX_ATTEMPTS = 6;
 export const TIME_ATTACK_BONUS: Record<string, number> = {
   easy: 10,
   medium: 18,
