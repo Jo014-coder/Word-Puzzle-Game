@@ -1,0 +1,84 @@
+# GRIDDL – Feature Additions Prompt for Replit
+
+> **IMPORTANT:** Do not change any existing game logic, styling, colours, fonts, animations, shop system, difficulty system, ad system, or background system. Only ADD the new features described below. If a file is not mentioned, do not touch it.
+
+---
+
+## 1. LEADERBOARD (Time Attack mode)
+
+**What to build:**
+- A local leaderboard that saves the top 10 Time Attack scores using `AsyncStorage`
+- After every Time Attack game ends (win or lose), if the score is in the top 10, save it with the date and difficulty played
+- Add a "Leaderboard" button on `HomeScreen.tsx` next to the existing Shop button, only visible when `gameMode === 'timeAttack'` is selected
+- The leaderboard opens as a modal (not a new screen) showing rank, score, difficulty, and date
+- Use the existing `Colors`, `Inter` fonts, and surface/card styles already in the project — do not introduce new styles that conflict
+
+**Files to modify:** `HomeScreen.tsx`, `contexts/GameContext.tsx` (add leaderboard save logic), create new `components/LeaderboardModal.tsx`
+
+---
+
+## 2. DAILY STREAK REWARDS
+
+**What to build:**
+- After a player completes the Daily puzzle, check their current `streak` value from `GameContext`
+- Award bonus coins based on streak milestones:
+  - 3-day streak → +15 bonus coins
+  - 7-day streak → +30 bonus coins
+  - 14-day streak → +60 bonus coins
+  - 30-day streak → +100 bonus coins
+- Show the bonus reward using the existing `Toast` component (`components/Toast.tsx`) immediately after the daily win, with a message like "🔥 7-day streak! +30 bonus coins"
+- Only trigger once per daily completion — no double rewards
+
+**Files to modify:** `contexts/GameContext.tsx` only (add streak reward logic inside the existing daily win handling)
+
+---
+
+## 3. SOUND EFFECTS
+
+**What to build:**
+- Install `expo-av` for audio (it is already compatible with this Expo project)
+- Add subtle sound effects for:
+  - Peg placed → soft tick/click sound
+  - Row submitted → whoosh or confirm sound
+  - Correct guess (win) → short fanfare or chime
+  - Wrong guess (lose) → low thud or buzz
+  - Hint used → sparkle/pop sound
+- Source free sounds from `https://freesound.org` or use Expo's built-in audio capabilities with simple generated tones if assets are unavailable
+- Add a **Sound toggle button** (🔊/🔇 icon) in the top-right area of `HomeScreen.tsx` header, saving the preference to `AsyncStorage` so it persists
+- If sound is toggled off, skip all audio playback — never crash if audio fails to load
+
+**Files to modify:** `HomeScreen.tsx` (sound toggle UI), `components/GameScreen.tsx` (trigger sounds on peg/row events), create `utils/sounds.ts` to centralise all audio logic
+
+---
+
+## 4. HOW TO PLAY — Onboarding + Persistent Help Button
+
+**What to build:**
+
+### First-launch tutorial:
+- On first ever app launch (check `AsyncStorage` for a `'hasSeenTutorial'` key), show a `HowToPlayModal` before the home screen is interacted with
+- The modal should explain:
+  1. **Goal:** Crack the secret colour code
+  2. **Pegs:** Tap a slot, then tap a colour from the bottom palette to place it
+  3. **Feedback pins:** 🟢 Green = right colour, right position | 🟡 Yellow = right colour, wrong position | ⚫ Grey = colour not in code
+  4. **Extreme mode:** One feedback pin is fake — don't trust them all!
+- Use 3–4 simple slides/steps with a "Next" and "Got it!" button
+- Match the existing dark theme, `Colors`, and `Inter` fonts exactly — no new colour values
+
+### Persistent Help button:
+- Add a small `?` icon button in the top area of `HomeScreen.tsx` (near the GRIDDL title or in a corner)
+- Tapping it opens the same `HowToPlayModal` at any time
+- The modal should have a close (✕) button so the player can dismiss it
+
+**Files to modify:** `HomeScreen.tsx` (add `?` button), create `components/HowToPlayModal.tsx`
+**Do NOT modify:** `GameScreen.tsx`, `ResultScreen.tsx`, `ShopScreen.tsx`, or any context/game logic files for this feature
+
+---
+
+## General rules for all changes:
+- Use `AsyncStorage` (already installed) for any persistence
+- Use `Animated` from `react-native-reanimated` (already installed) for any new animations — do not install a new animation library
+- Do not change `constants/colors.ts`, `constants/game.ts`, or `constants/backgrounds.ts`
+- Do not change any existing component's visual appearance or layout
+- Do not change the ad system (`AdOverlay.tsx`) in any way
+- Each feature should be self-contained and not break the others if one fails

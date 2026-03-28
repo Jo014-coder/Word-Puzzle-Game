@@ -1,0 +1,89 @@
+# GRIDDL – Feature Additions Prompt for Replit (v2)
+
+> **IMPORTANT:** Do not change any existing game logic, styling, colours, fonts, animations, shop system, difficulty system, ad system, or background system. Only ADD the new features described below. If a file is not mentioned, do not touch it.
+
+---
+
+## 1. LEADERBOARD (Time Attack mode)
+
+**What to build:**
+- A local leaderboard that saves the top 10 Time Attack scores using `AsyncStorage`
+- After every Time Attack game ends (win or lose), if the score is in the top 10, save it with the date and difficulty played
+- Add a "Leaderboard" button on `HomeScreen.tsx` next to the existing Shop button. It should only be visible when the **local home screen selection state** has `timeAttack` selected — do NOT reference `gameMode` from `GameContext` for this visibility check, as that represents the active game, not the home screen selection
+- The leaderboard opens as a modal (not a new screen) showing rank, score, difficulty, and date
+- Use the existing `Colors`, `Inter` fonts, and surface/card styles already in the project — do not introduce new styles that conflict
+
+**Files to modify:** `HomeScreen.tsx`, `contexts/GameContext.tsx` (add leaderboard save logic), create new `components/LeaderboardModal.tsx`
+
+---
+
+## 2. DAILY STREAK REWARDS
+
+**What to build:**
+- After a player completes the Daily puzzle, check their current `streak` value from `GameContext`
+- The existing system already awards coins at a 3-day streak — do NOT touch that logic or add anything at streak 3
+- Only add bonuses at these new milestones, which do not overlap with anything existing:
+  - 7-day streak → +10 bonus coins
+  - 14-day streak → +20 bonus coins
+  - 30-day streak → +35 bonus coins
+- These amounts are intentionally modest to preserve the shop economy — do not increase them
+- Show the bonus reward using the existing `Toast` component (`components/Toast.tsx`) immediately after the daily win, with a message like "🔥 7-day streak! +10 bonus coins"
+- Only trigger once per daily completion — no double rewards
+- Do not award these bonuses in Endless or Time Attack mode — Daily only
+
+**Files to modify:** `contexts/GameContext.tsx` only (add streak reward logic inside the existing daily win handling)
+
+---
+
+## 3. SOUND EFFECTS
+
+**What to build:**
+- Install `expo-av` for audio (it is already compatible with this Expo project)
+- Create a folder `assets/sounds/` and place 5 short royalty-free `.mp3` files there with these exact names:
+  - `peg_place.mp3` — soft tick/click (peg placed in a slot)
+  - `row_submit.mp3` — whoosh or confirm (row submitted)
+  - `win.mp3` — short chime or fanfare (correct guess)
+  - `lose.mp3` — low thud or buzz (game lost)
+  - `hint.mp3` — sparkle or pop (hint used)
+- Create `utils/sounds.ts` to centralise all audio loading and playback logic. It should export simple functions: `playPegPlace()`, `playRowSubmit()`, `playWin()`, `playLose()`, `playHint()`
+- All playback functions must be wrapped in try/catch — never crash if audio fails to load or play
+- Add a **Sound toggle button** (🔊/🔇 icon) in the top-right area of `HomeScreen.tsx` header, saving the on/off preference to `AsyncStorage` under the key `'soundEnabled'` so it persists across sessions
+- If sound is toggled off, all playback functions in `utils/sounds.ts` must silently return without playing anything
+- Hook the sound functions into `GameScreen.tsx` at the appropriate events (peg placed, row submitted, win, lose, hint used) — do not change any other logic in that file
+
+**Files to modify:** `HomeScreen.tsx` (sound toggle UI), `components/GameScreen.tsx` (trigger sounds on events only), create `utils/sounds.ts` and `assets/sounds/` folder with the 5 mp3 files
+
+---
+
+## 4. HOW TO PLAY — Onboarding + Persistent Help Button
+
+**What to build:**
+
+### First-launch tutorial:
+- On first ever app launch (check `AsyncStorage` for a `'hasSeenTutorial'` key), automatically show a `HowToPlayModal` before the player interacts with the home screen
+- Once dismissed, set `'hasSeenTutorial'` to `'true'` in `AsyncStorage` so it never auto-shows again
+- The modal should explain in 4 simple steps:
+  1. **Goal:** Crack the secret colour code before you run out of attempts
+  2. **Placing pegs:** Tap a slot, then tap a colour from the palette to fill it
+  3. **Feedback pins:** 🟢 Green = right colour, right position | 🟡 Yellow = right colour, wrong position | ⚫ Grey = colour not in the code
+  4. **Extreme mode:** One feedback pin is deliberately fake — don't trust them all!
+- Each step has a "Next" button; the last step has a "Got it!" button that closes the modal
+- Match the existing dark theme, `Colors`, and `Inter` fonts exactly — do not introduce any new colour values
+
+### Persistent Help button:
+- Add a small `?` icon button in the top-right corner of `HomeScreen.tsx` (near the GRIDDL title)
+- Tapping it opens the same `HowToPlayModal` at any time regardless of `'hasSeenTutorial'`
+- The modal must have a visible ✕ close button so the player can always dismiss it
+
+**Files to modify:** `HomeScreen.tsx` (add `?` button), create `components/HowToPlayModal.tsx`
+**Do NOT modify:** `GameScreen.tsx`, `ResultScreen.tsx`, `ShopScreen.tsx`, or any context/game logic files for this feature
+
+---
+
+## General rules for all changes:
+- Use `AsyncStorage` (already installed) for any new persistence
+- Use `react-native-reanimated` (already installed) for any new animations — do not install a new animation library
+- Do not change `constants/colors.ts`, `constants/game.ts`, or `constants/backgrounds.ts`
+- Do not change any existing component's visual appearance or layout
+- Do not change the ad system (`AdOverlay.tsx`) in any way
+- Each feature must be fully self-contained — if one feature breaks, the others must still work
