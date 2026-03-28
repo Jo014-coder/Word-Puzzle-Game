@@ -11,11 +11,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useEffect, ReactNode, useState } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
 import { Difficulty, DIFFICULTY_CONFIG, GameMode } from '@/constants/game';
 import Toast from './Toast';
 import LeaderboardModal from './LeaderboardModal';
+import { setSoundEnabledCache } from '@/utils/sounds';
+import HowToPlayModal from './HowToPlayModal';
 
 function ShimmerTitle() {
   const shimmer = useSharedValue(0);
@@ -155,6 +158,35 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === 'web' ? 67 : 0;
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem('soundEnabled').then(val => {
+      const enabled = val !== 'false';
+      setSoundEnabled(enabled);
+      setSoundEnabledCache(enabled);
+    }).catch(() => {});
+    AsyncStorage.getItem('hasSeenTutorial').then(val => {
+      if (!val) setShowHelp(true);
+    }).catch(() => {});
+  }, []);
+
+  const toggleSound = async () => {
+    const next = !soundEnabled;
+    setSoundEnabled(next);
+    setSoundEnabledCache(next);
+    try {
+      await AsyncStorage.setItem('soundEnabled', next ? 'true' : 'false');
+    } catch {}
+  };
+
+  const handleCloseHelp = async () => {
+    setShowHelp(false);
+    try {
+      await AsyncStorage.setItem('hasSeenTutorial', 'true');
+    } catch {}
+  };
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -180,6 +212,12 @@ export default function HomeScreen() {
             <Text style={styles.statValue}>{hintTokens}</Text>
           </View>
         )}
+        <Pressable onPress={toggleSound} style={styles.soundToggle} hitSlop={8} accessibilityRole="button" accessibilityLabel={soundEnabled ? 'Mute sounds' : 'Unmute sounds'}>
+          <Ionicons name={soundEnabled ? 'volume-high-outline' : 'volume-mute-outline'} size={20} color={soundEnabled ? Colors.textPrimary : Colors.textMuted} />
+        </Pressable>
+        <Pressable onPress={() => setShowHelp(true)} style={styles.helpButton} hitSlop={8} accessibilityRole="button" accessibilityLabel="How to play">
+          <Ionicons name="help-circle-outline" size={22} color={Colors.textMuted} />
+        </Pressable>
       </View>
 
       <View style={styles.titleSection}>
@@ -258,6 +296,7 @@ export default function HomeScreen() {
       </View>
 
       <LeaderboardModal visible={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
+      <HowToPlayModal visible={showHelp} onClose={handleCloseHelp} />
 
       {toastMessage && (
         <Toast message={toastMessage} type={toastType} onHide={clearToast} />
@@ -288,6 +327,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 16,
     fontFamily: 'Inter_700Bold',
+  },
+  soundToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+  },
+  helpButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 2,
   },
   titleSection: {
     alignItems: 'center',
