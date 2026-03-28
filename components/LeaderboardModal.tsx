@@ -9,7 +9,7 @@ function RankBadge({ rank }: { rank: number }) {
   const gold = rank === 1;
   const silver = rank === 2;
   const bronze = rank === 3;
-  const color = gold ? '#FFD93D' : silver ? '#9CA3AF' : bronze ? '#F97316' : Colors.textMuted;
+  const color = gold ? Colors.coin : silver ? Colors.textSecondary : bronze ? Colors.pegs[5] : Colors.textMuted;
   return (
     <View style={[styles.rankBadge, { borderColor: color }]}>
       <Text style={[styles.rankText, { color }]}>#{rank}</Text>

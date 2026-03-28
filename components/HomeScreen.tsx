@@ -250,9 +250,9 @@ export default function HomeScreen() {
           <Text style={styles.shopButtonText}>Shop</Text>
         </Pressable>
         {gameMode === 'timeAttack' && (
-          <Pressable onPress={() => setShowLeaderboard(true)} style={styles.shopButton}>
+          <Pressable onPress={() => setShowLeaderboard(true)} style={styles.leaderboardButton}>
             <MaterialCommunityIcons name="trophy-outline" size={18} color={Colors.coin} />
-            <Text style={[styles.shopButtonText, { color: Colors.coin }]}>Leaderboard</Text>
+            <Text style={styles.leaderboardButtonText}>Leaderboard</Text>
           </Pressable>
         )}
       </View>
@@ -440,6 +440,19 @@ const styles = StyleSheet.create({
   shopButtonText: {
     fontSize: 14,
     color: Colors.accentGlow,
+    fontWeight: '600',
+    fontFamily: 'Inter_600SemiBold',
+  },
+  leaderboardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  leaderboardButtonText: {
+    fontSize: 14,
+    color: Colors.coin,
     fontWeight: '600',
     fontFamily: 'Inter_600SemiBold',
   },
