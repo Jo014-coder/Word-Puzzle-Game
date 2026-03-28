@@ -9,12 +9,13 @@ import Animated, {
   Easing,
   withDelay,
 } from 'react-native-reanimated';
-import { useEffect, ReactNode } from 'react';
+import { useEffect, ReactNode, useState } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
 import { Difficulty, DIFFICULTY_CONFIG, GameMode } from '@/constants/game';
 import Toast from './Toast';
+import LeaderboardModal from './LeaderboardModal';
 
 function ShimmerTitle() {
   const shimmer = useSharedValue(0);
@@ -153,6 +154,7 @@ export default function HomeScreen() {
   const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame, openShop, ownedItems, toastMessage, toastType, clearToast } = useGame();
   const insets = useSafeAreaInsets();
   const webTop = Platform.OS === 'web' ? 67 : 0;
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -242,10 +244,20 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <Pressable onPress={openShop} style={styles.shopButton}>
-        <Ionicons name="storefront-outline" size={18} color={Colors.accentGlow} />
-        <Text style={styles.shopButtonText}>Shop</Text>
-      </Pressable>
+      <View style={styles.bottomButtons}>
+        <Pressable onPress={openShop} style={styles.shopButton}>
+          <Ionicons name="storefront-outline" size={18} color={Colors.accentGlow} />
+          <Text style={styles.shopButtonText}>Shop</Text>
+        </Pressable>
+        {gameMode === 'timeAttack' && (
+          <Pressable onPress={() => setShowLeaderboard(true)} style={styles.shopButton}>
+            <MaterialCommunityIcons name="trophy-outline" size={18} color={Colors.coin} />
+            <Text style={[styles.shopButtonText, { color: Colors.coin }]}>Leaderboard</Text>
+          </Pressable>
+        )}
+      </View>
+
+      <LeaderboardModal visible={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
 
       {toastMessage && (
         <Toast message={toastMessage} type={toastType} onHide={clearToast} />
@@ -412,12 +424,17 @@ const styles = StyleSheet.create({
     color: Colors.textMuted,
     fontFamily: 'Inter_400Regular',
   },
+  bottomButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 24,
+    marginTop: 16,
+  },
   shopButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    marginTop: 16,
     paddingVertical: 10,
   },
   shopButtonText: {

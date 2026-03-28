@@ -26,6 +26,14 @@ interface DailyGameResult {
   date: string;
 }
 
+export interface LeaderboardEntry {
+  score: number;
+  difficulty: Difficulty;
+  date: string;
+}
+
+const LEADERBOARD_KEY = 'griddl_leaderboard';
+
 interface SaveData {
   streak: number;
   coins: number;
@@ -120,6 +128,7 @@ export interface GameState {
   adPhase: 'none' | 'interstitial' | 'rewarded';
   pendingGameStart: { difficulty: Difficulty; mode: GameMode } | null;
   rewardedAdWatched: boolean;
+  leaderboard: LeaderboardEntry[];
 }
 
 interface GameContextValue extends GameState {
@@ -268,6 +277,7 @@ const haptic = (type: 'light' | 'medium' | 'success' | 'error' | 'warning') => {
 export function GameProvider({ children }: { children: ReactNode }) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastAdShownRef = useRef<number>(0);
+  const taResultSavedRef = useRef(false);
 
   const [state, setState] = useState<GameState>({
     screen: 'home',
@@ -317,6 +327,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     adPhase: 'none',
     pendingGameStart: null,
     rewardedAdWatched: false,
+    leaderboard: [],
   });
 
   useEffect(() => {
@@ -375,6 +386,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
           toastType: 'milestone',
         }));
       }
+
+      AsyncStorage.getItem(LEADERBOARD_KEY).then(data => {
+        if (data) {
+          try {
+            const entries: LeaderboardEntry[] = JSON.parse(data);
+            setState(prev => ({ ...prev, leaderboard: entries }));
+          } catch {}
+        }
+      });
     });
   }, []);
 
@@ -401,6 +421,34 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return () => { if (timerRef.current) clearInterval(timerRef.current); };
     }
   }, [state.isTimerRunning]);
+
+  useEffect(() => {
+    if (state.gameMode === 'timeAttack' && state.screen === 'game') {
+      taResultSavedRef.current = false;
+    }
+  }, [state.gameMode, state.screen]);
+
+  useEffect(() => {
+    if (
+      state.gameMode === 'timeAttack' &&
+      state.screen === 'result' &&
+      !taResultSavedRef.current
+    ) {
+      taResultSavedRef.current = true;
+      const score = state.timeAttackScore;
+      const difficulty = (state.effectiveDifficulty || state.difficulty || 'easy') as Difficulty;
+      const date = getTodayKey();
+      const entry: LeaderboardEntry = { score, difficulty, date };
+      AsyncStorage.getItem(LEADERBOARD_KEY).then(data => {
+        const existing: LeaderboardEntry[] = data ? JSON.parse(data) : [];
+        const updated = [...existing, entry]
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10);
+        AsyncStorage.setItem(LEADERBOARD_KEY, JSON.stringify(updated));
+        setState(prev => ({ ...prev, leaderboard: updated }));
+      }).catch(() => {});
+    }
+  }, [state.screen, state.gameMode]);
 
   const getConfig = useCallback(() => {
     const diff = state.effectiveDifficulty || state.difficulty || 'easy';
@@ -674,6 +722,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if (prev.activeBackground === 'bg_default') newActiveBackground = 'bg_obsidian';
             milestoneMsg = 'Streak 15: Obsidian theme unlocked!';
           }
+        }
+
+        if (prev.gameMode === 'daily') {
+          if (newStreak === 7) { bonusCoins += 10; milestoneMsg = (milestoneMsg ? milestoneMsg + ' ' : '') + '+10 bonus coins!'; }
+          else if (newStreak === 14) { bonusCoins += 20; milestoneMsg = '🔥 14-day streak! +20 bonus coins'; }
+          else if (newStreak === 30) { bonusCoins += 35; milestoneMsg = '🔥 30-day streak! +35 bonus coins'; }
         }
 
         const isTimeAttack = prev.gameMode === 'timeAttack';
