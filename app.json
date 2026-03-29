@@ -21,7 +21,7 @@
       }
     },
     "android": {
-      "package": "com.jaglab.griddl",
+      "package": "com.jagateliers.griddl",
       "config": {
         "googleMobileAdsAppId": "ca-app-pub-1857750915324923~5996117307"
       },
