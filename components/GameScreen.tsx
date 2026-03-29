@@ -10,7 +10,6 @@ import { useEffect, useRef } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
-import { playPegPlace, playRowSubmit, playWin, playLose, playHint } from '@/utils/sounds';
 import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS } from '@/constants/game';
 import GuessRowView from './GuessRowView';
 import ColorPeg from './ColorPeg';
@@ -47,7 +46,7 @@ function TopBar() {
 
       <View style={styles.topBarRight}>
         {hintTokens > 0 && (
-          <Pressable onPress={() => { useHint(); playHint(); }} style={styles.hintButton} hitSlop={8}>
+          <Pressable onPress={useHint} style={styles.hintButton} hitSlop={8}>
             <Ionicons name="bulb" size={18} color="#06B6D4" />
             <Text style={styles.hintCount}>{hintTokens}</Text>
           </Pressable>
@@ -131,7 +130,7 @@ function ColorPalette() {
         {Array.from({ length: config.colorCount }, (_, i) => (
           <Pressable
             key={i}
-            onPress={() => { selectColor(i); playPegPlace(); }}
+            onPress={() => selectColor(i)}
             testID={`palette-color-${i}`}
             accessibilityRole="button"
             accessibilityLabel={`Color ${i}`}
@@ -149,7 +148,7 @@ function ColorPalette() {
           <Ionicons name="backspace-outline" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Clear</Text>
         </Pressable>
-        <Pressable onPress={() => { submitGuess(); playRowSubmit(); }} testID="submit-button" accessibilityRole="button" accessibilityLabel="Submit" style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : 1 }]}>
+        <Pressable onPress={submitGuess} testID="submit-button" accessibilityRole="button" accessibilityLabel="Submit" style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : 1 }]}>
           <Ionicons name="checkmark-circle" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Submit</Text>
         </Pressable>
@@ -175,11 +174,6 @@ export default function GameScreen() {
       scrollRef.current.scrollToEnd({ animated: true });
     }
   }, [currentRow]);
-
-  useEffect(() => {
-    if (phase === 'won') playWin();
-    else if (phase === 'lost') playLose();
-  }, [phase]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top + webTop }]}>

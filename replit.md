@@ -49,12 +49,6 @@ Preferred communication style: Simple, everyday language.
 - **Ads**: Interstitial ads shown before game launch (Daily Challenge tap, difficulty button tap). Rewarded ad button on result screen (+3 coins). No banner ads. `adsRemoved` boolean (default false, saved to AsyncStorage) skips interstitials but keeps rewarded button. Ad Unit IDs: App ID `ca-app-pub-1857750915324923~5996117307`, interstitial `ca-app-pub-1857750915324923/3325721935`, rewarded `ca-app-pub-1857750915324923/6239659881`. Currently simulated via AdOverlay component for Expo Go compatibility.
 - **Toggle deselection**: Tapping an already-selected game mode (Endless/Time Attack) deselects it, hiding the difficulty grid
 
-### Sound Effects
-- `utils/sounds.ts`: Centralised sound utility using expo-av. Exports `playPegPlace()`, `playRowSubmit()`, `playWin()`, `playLose()`, `playHint()` — all try/catch wrapped. Reads `soundEnabled` AsyncStorage key (cached in memory). `setSoundEnabledCache()` allows HomeScreen to update the in-memory flag immediately.
-- `assets/sounds/`: 5 WAV files (peg_place, row_submit, win, lose, hint) generated as synthetic tones via Node.js.
-- Sound toggle (🔊/🔇) in HomeScreen's statsRow — reads/writes `'soundEnabled'` key, persists across launches.
-- Sounds fire on: peg selection, row submission, win, loss, hint use (via GameScreen useEffect and onPress handlers).
-
 ### How to Play Modal
 - `components/HowToPlayModal.tsx`: 4-step modal tutorial (Goal → Placing Pegs → Feedback Pins → Extreme Mode) with step dot indicators, Next/Got it! navigation, and ✕ close button.
 - First-launch auto-show: HomeScreen reads `'hasSeenTutorial'` from AsyncStorage on mount. If not set, opens modal automatically. Closing writes `'true'` to prevent future auto-shows.
