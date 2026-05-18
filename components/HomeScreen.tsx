@@ -181,7 +181,7 @@ export default function HomeScreen() {
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingTop: insets.top + webTop + 16, paddingBottom: 32 }}
+      contentContainerStyle={{ paddingTop: insets.top + webTop + 16, paddingBottom: 32, backgroundColor: 'transparent' }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
