@@ -17,13 +17,13 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.jaglab.griddl",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-1857750915324923~5996117307"
+        "googleMobileAdsAppId": "ca-app-pub-2071050565025322~1665047441"
       }
     },
     "android": {
       "package": "com.jagateliers.griddl",
       "config": {
-        "googleMobileAdsAppId": "ca-app-pub-1857750915324923~5996117307"
+        "googleMobileAdsAppId": "ca-app-pub-2071050565025322~1665047441"
       },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -37,8 +37,8 @@
     },
     "plugins": [
       ["react-native-google-mobile-ads", {
-        "androidAppId": "ca-app-pub-1857750915324923~5996117307",
-        "iosAppId": "ca-app-pub-1857750915324923~5996117307",
+        "androidAppId": "ca-app-pub-2071050565025322~1665047441",
+        "iosAppId": "ca-app-pub-2071050565025322~1665047441",
         "delayAppMeasurementInit": false
       }],
       [
