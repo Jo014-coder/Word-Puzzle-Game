@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { Platform, View, Text, StyleSheet, Pressable } from 'react-native';
 
-const INTERSTITIAL_ID = 'ca-app-pub-1857750915324923/3325721935';
-const REWARDED_ID = 'ca-app-pub-1857750915324923/6239659881';
+const INTERSTITIAL_ID = 'ca-app-pub-2071050565025322/7780850882';
+const REWARDED_ID = 'ca-app-pub-2071050565025322/6799090091';
 const INTERSTITIAL_TEST_ID = 'ca-app-pub-3940256099942544/1033173712';
 const REWARDED_TEST_ID = 'ca-app-pub-3940256099942544/5224354917';
 
