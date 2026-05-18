@@ -1,4 +1,4 @@
-import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -179,7 +179,12 @@ export default function HomeScreen() {
   const extremeUnlocked = ownedItems.includes('extreme');
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + webTop + 16 }]}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={{ paddingTop: insets.top + webTop + 16, paddingBottom: 32 }}
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Ionicons name="flame" size={18} color={Colors.streak} />
@@ -282,7 +287,7 @@ export default function HomeScreen() {
       {toastMessage && (
         <Toast message={toastMessage} type={toastType} onHide={clearToast} />
       )}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -291,6 +296,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
+    paddingBottom: 0,
   },
   statsRow: {
     flexDirection: 'row',
