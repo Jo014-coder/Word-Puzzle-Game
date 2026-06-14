@@ -680,8 +680,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const today = getTodayKey();
         const yesterday = getYesterdayKey();
         const lastPlayed = prev.lastPlayedDate;
+        const alreadyPlayedToday = lastPlayed === today;
         const isConsecutiveDay = lastPlayed === yesterday;
-        const newStreak = isConsecutiveDay ? prev.streak + 1 : 1;
+        const newStreak = alreadyPlayedToday ? prev.streak : isConsecutiveDay ? prev.streak + 1 : 1;
 
         const DAILY_COINS = [15, 10, 8, 6, 4, 2];
         const TIME_ATTACK_COINS: Record<string, number[]> = {

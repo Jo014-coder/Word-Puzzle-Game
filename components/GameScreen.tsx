@@ -1,4 +1,5 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, useWindowDimensions, Platform } from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions, Platform } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -10,7 +11,7 @@ import { useEffect, useRef } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
-import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS } from '@/constants/game';
+import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS, TIME_ATTACK_DURATION } from '@/constants/game';
 import GuessRowView from './GuessRowView';
 import ColorPeg from './ColorPeg';
 import Toast from './Toast';
@@ -78,7 +79,7 @@ function ProgressBar() {
 
   useEffect(() => {
     if (gameMode === 'timeAttack') {
-      timeProgress.value = withTiming(timeLeft / 60, { duration: 900, easing: Easing.linear });
+      timeProgress.value = withTiming(timeLeft / TIME_ATTACK_DURATION, { duration: 900, easing: Easing.linear });
     }
   }, [timeLeft, gameMode]);
 
