@@ -1038,9 +1038,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
     for (let ri = 0; ri < rows.length; ri++) {
       const row = rows[ri];
       if (!row.submitted) continue;
-      const pegLine = row.pegs.map(p => p.colorIndex !== null ? Colors.pegEmojis[p.colorIndex] : '⚫').join('');
+      const feedbackLine = (row.feedback || []).map(f => f === 'green' ? '🟩' : f === 'yellow' ? '🟨' : '⬛').join('');
       const isWinRow = won && ri === (typeof attempts === 'number' ? attempts - 1 : -1);
-      text += pegLine + (isWinRow ? ' ✅' : '') + '\n';
+      text += feedbackLine + (isWinRow ? ' ✅' : '') + '\n';
     }
 
     if (Platform.OS === 'web') {

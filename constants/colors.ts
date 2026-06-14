@@ -29,7 +29,7 @@ const Colors = {
     '#EAB308',
     '#22C55E',
     '#A855F7',
-    '#F97316',
+    '#FF8C00',
   ] as string[],
 
   pegNames: [
