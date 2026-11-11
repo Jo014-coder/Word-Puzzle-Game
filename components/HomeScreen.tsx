@@ -19,6 +19,7 @@ import { Difficulty, DIFFICULTY_CONFIG, GameMode } from '@/constants/game';
 import Toast from './Toast';
 import LeaderboardModal from './LeaderboardModal';
 import HowToPlayModal from './HowToPlayModal';
+import { showPrivacyOptions } from '@/lib/ads';
 
 function ShimmerTitle() {
   const shimmer = useSharedValue(0);
@@ -282,6 +283,17 @@ export default function HomeScreen() {
         )}
       </View>
 
+      {Platform.OS !== 'web' && (
+        <Pressable
+          onPress={() => { void showPrivacyOptions(); }}
+          style={styles.privacyLink}
+          hitSlop={8}
+          accessibilityRole="button"
+        >
+          <Text style={styles.privacyLinkText}>Privacy choices</Text>
+        </Pressable>
+      )}
+
       <LeaderboardModal visible={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
       <HowToPlayModal visible={showHelp} onClose={handleCloseHelp} />
 
@@ -293,6 +305,17 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  privacyLink: {
+    alignSelf: 'center',
+    marginTop: 16,
+    marginBottom: 8,
+    paddingVertical: 4,
+  },
+  privacyLinkText: {
+    fontSize: 12,
+    color: '#8b8fa3',
+    textDecorationLine: 'underline',
+  },
   container: {
     flex: 1,
     backgroundColor: 'transparent',

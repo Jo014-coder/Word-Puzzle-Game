@@ -15,17 +15,11 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.jaglab.griddl",
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-2071050565025322~1665047441"
-      }
+      "bundleIdentifier": "com.jaglab.griddl"
     },
     "android": {
       "package": "com.jagateliers.griddl",
       "versionCode": 2,
-      "config": {
-        "googleMobileAdsAppId": "ca-app-pub-2071050565025322~1665047441"
-      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/app-icon.png",
@@ -37,11 +31,6 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      ["react-native-google-mobile-ads", {
-        "androidAppId": "ca-app-pub-2071050565025322~1665047441",
-        "iosAppId": "ca-app-pub-2071050565025322~1665047441",
-        "delayAppMeasurementInit": false
-      }],
       [
         "expo-router",
         {
@@ -49,7 +38,8 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withLevelPlay"
     ],
     "experiments": {
       "typedRoutes": true,
