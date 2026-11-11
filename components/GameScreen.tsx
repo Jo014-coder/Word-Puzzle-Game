@@ -7,12 +7,12 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
 import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS, TIME_ATTACK_DURATION } from '@/constants/game';
-import GuessRowView from './GuessRowView';
+import GuessRowView, { fitBoard } from './GuessRowView';
 import ColorPeg from './ColorPeg';
 import Toast from './Toast';
 
@@ -121,8 +121,10 @@ function ColorPalette() {
   const rowFull = !!rows[currentRow] && rows[currentRow].pegs.every(p => p.colorIndex !== null);
   const diff = effectiveDifficulty || difficulty || 'easy';
   const config = DIFFICULTY_CONFIG[diff];
-  const { width } = useWindowDimensions();
-  const paletteSize = Math.min(Math.floor((Math.min(width, 420) - 32 - 10 * (config.colorCount - 1)) / config.colorCount), 54);
+  const { width, height } = useWindowDimensions();
+  // On short screens the colour buttons shrink a little so the board gets more room.
+  const paletteCap = height < 620 ? 38 : height < 720 ? 46 : 54;
+  const paletteSize = Math.min(Math.floor((Math.min(width, 420) - 32 - 10 * (config.colorCount - 1)) / config.colorCount), paletteCap);
 
   if (phase !== 'playing') return null;
 
@@ -168,11 +170,16 @@ export default function GameScreen() {
     ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
     : baseConfig;
   const scrollRef = useRef<ScrollView>(null);
+  const { width: screenWidth } = useWindowDimensions();
+  // The board is sized so that every row fits on screen at once. Players must be able
+  // to see all their earlier guesses without scrolling.
+  const [boardHeight, setBoardHeight] = useState(0);
+  const { pegSize, compact, fits: boardFits } = fitBoard(screenWidth, boardHeight, rows[0]?.pegs.length ?? 4, rows.length);
   const webTop = Platform.OS === 'web' ? 12 : 0;
   const webBottom = Platform.OS === 'web' ? 12 : 0;
 
   useEffect(() => {
-    if (currentRow > 3 && scrollRef.current) {
+    if (currentRow > 3 && scrollRef.current && !boardFits) {
       scrollRef.current.scrollToEnd({ animated: true });
     }
   }, [currentRow]);
@@ -187,12 +194,16 @@ export default function GameScreen() {
         style={styles.gridScroll}
         contentContainerStyle={styles.gridContent}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!boardFits}
+        onLayout={e => setBoardHeight(e.nativeEvent.layout.height)}
       >
         {rows.map((row, idx) => (
           <GuessRowView
             key={idx}
             row={row}
             rowIndex={idx}
+            pegSize={pegSize}
+            compact={compact}
             isCurrent={idx === currentRow && phase === 'playing'}
             isShaking={shakeRow === idx}
             isRevealing={revealingRow === idx}

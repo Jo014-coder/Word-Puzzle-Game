@@ -45,7 +45,7 @@ export function FeedbackPin({ peg, index, size, animated, testID }: FeedbackPinP
       ? { width: size, height: size, borderRadius: size / 2, backgroundColor: Colors.correctBright }
       : peg === 'yellow'
         ? { width: size, height: size, borderRadius: size / 2, borderWidth: Math.max(2.5, size * 0.26), borderColor: Colors.misplacedBright }
-        : { width: size * 0.42, height: size * 0.42, borderRadius: size * 0.21, backgroundColor: Colors.wrongPeg };
+        : { width: Math.max(4, size * 0.42), height: Math.max(4, size * 0.42), borderRadius: size, backgroundColor: Colors.wrongPeg };
 
   return (
     <View testID={testID} accessibilityLabel={peg === 'green' ? 'Right colour, right place' : peg === 'yellow' ? 'Right colour, wrong place' : 'Not in the code'} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
