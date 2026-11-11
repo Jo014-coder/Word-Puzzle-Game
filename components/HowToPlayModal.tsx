@@ -7,22 +7,27 @@ const STEPS = [
   {
     emoji: '🎯',
     title: 'Your Goal',
-    body: 'Crack the secret colour code! You have a limited number of attempts — the exact number depends on the difficulty you choose.',
+    body: 'Crack the secret colour code before you run out of guesses. Colours can appear more than once.',
   },
   {
     emoji: '🔵',
-    title: 'Placing Pegs',
-    body: 'Tap a colour from the palette to place it in the current row. Tap again to place the next peg. Use the Clear button to remove the last peg, then tap Submit when your row is full.',
+    title: 'Make a Guess',
+    body: 'Tap a colour to drop it into the row. Tap any slot to change it, or use Clear to undo. When the row is full, tap Submit.',
   },
   {
     emoji: '📍',
-    title: 'Reading the Feedback',
-    body: 'After each guess you get coloured feedback pins:\n\n🟢  Right colour, right position\n🟡  Right colour, wrong position\n⚫  Colour not in the code\n\nUse the clues to narrow it down!',
+    title: 'Read the Clues',
+    body: 'A clue appears under each peg:\n\n🟢  Solid green: right colour, right place\n🟡  Yellow ring: right colour, wrong place\n⚫  Small grey dot: not in the code',
+  },
+  {
+    emoji: '🔥',
+    title: 'Come Back Daily',
+    body: 'Win at least one game a day to build your streak and unlock rewards. There is a new Daily Challenge every day, the same for everyone.',
   },
   {
     emoji: '💀',
     title: 'Extreme Mode',
-    body: 'Extreme mode uses 7 pegs and only 4 attempts. One of your feedback pins is also fake — so think carefully before trusting every clue. Unlock it in the Shop.',
+    body: 'For experts: 7 pegs, only 4 guesses, and one of your clues is fake. Unlock it in the Shop.',
   },
 ];
 
@@ -130,7 +135,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   bodyScroll: {
-    maxHeight: 140,
+    maxHeight: 190,
     width: '100%',
   },
   bodyContent: {

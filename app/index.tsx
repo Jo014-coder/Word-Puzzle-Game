@@ -1,4 +1,4 @@
-import { View, StyleSheet, StatusBar } from 'react-native';
+import { View, StyleSheet, StatusBar, Platform } from 'react-native';
 import { useGame } from '@/contexts/GameContext';
 import HomeScreen from '@/components/HomeScreen';
 import GameScreen from '@/components/GameScreen';
@@ -22,5 +22,7 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    // In a desktop browser, keep the game phone-shaped and centred.
+    ...(Platform.OS === 'web' ? { width: '100%', maxWidth: 430, alignSelf: 'center' as const } : {}),
   },
 });

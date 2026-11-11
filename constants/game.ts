@@ -15,10 +15,10 @@ export const DIFFICULTY_CONFIG: Record<Difficulty, DifficultyConfig> = {
   easy: {
     label: 'Easy',
     codeLength: 4,
-    maxAttempts: 8,
+    maxAttempts: 6,
     colorCount: 6,
     hintTokens: 0,
-    description: '4 pegs  |  8 attempts',
+    description: '4 pegs  |  6 attempts',
     hasFakeFeedback: false,
   },
   medium: {

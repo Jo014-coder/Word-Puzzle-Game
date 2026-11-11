@@ -16,6 +16,8 @@ const Colors = {
   correctPeg: '#16A34A',
   misplacedPeg: '#CA8A04',
   wrongPeg: '#6B7280',
+  correctBright: '#22C55E',
+  misplacedBright: '#FACC15',
 
   coin: '#FFD93D',
   streak: '#FF6B6B',
@@ -40,6 +42,9 @@ const Colors = {
     'Purple',
     'Orange',
   ] as string[],
+
+  // Shapes shown on pegs when colour blind mode is on (MaterialCommunityIcons names).
+  pegSymbols: ['triangle', 'square', 'star', 'circle', 'rhombus', 'plus-thick'] as string[],
 
   pegEmojis: ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'] as string[],
 

@@ -16,6 +16,7 @@ import { DIFFICULTY_CONFIG } from '@/constants/game';
 import ColorPeg from './ColorPeg';
 import Confetti from './Confetti';
 import Toast from './Toast';
+import { isRewardedReady } from '@/lib/ads';
 
 function SecretCodeReveal({ code, codeLength }: { code: number[]; codeLength: number }) {
   return (
@@ -82,8 +83,8 @@ export default function ResultScreen() {
   const diff = effectiveDifficulty || difficulty || 'easy';
   const config = DIFFICULTY_CONFIG[diff];
   const won = phase === 'won';
-  const webTop = Platform.OS === 'web' ? 67 : 0;
-  const webBottom = Platform.OS === 'web' ? 34 : 0;
+  const webTop = 0;
+  const webBottom = 0;
 
   const cardScale = useSharedValue(0.8);
   const cardOpacity = useSharedValue(0);
@@ -121,7 +122,7 @@ export default function ResultScreen() {
           )}
         </View>
 
-        {!won && <SecretCodeReveal code={secretCode} codeLength={config.codeLength} />}
+        {!isTimeAttack && <SecretCodeReveal code={secretCode} codeLength={config.codeLength} />}
         {isTimeAttack && (
           <View style={styles.timeAttackResults}>
             <Text style={styles.taLabel}>Codes Solved</Text>
@@ -160,13 +161,13 @@ export default function ResultScreen() {
           </View>
         )}
 
-        {gameMode !== 'endless' && !rewardedAdWatched && (
+        {!rewardedAdWatched && isRewardedReady() && (
           <Pressable
             onPress={requestRewardedAd}
             style={({ pressed }) => [styles.rewardedAdButton, { opacity: pressed ? 0.8 : 1 }]}
           >
             <Ionicons name="play-circle" size={20} color="#FBBF24" />
-            <Text style={styles.rewardedAdText}>Watch ad for +3 coins</Text>
+            <Text style={styles.rewardedAdText}>Watch an ad for +10 coins</Text>
             <Text style={styles.rewardedAdEmoji}>🪙</Text>
           </Pressable>
         )}

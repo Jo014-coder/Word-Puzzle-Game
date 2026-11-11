@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,11 +28,13 @@ interface ColorPegProps {
   onPress?: () => void;
   disabled?: boolean;
   goldBorder?: boolean;
+  /** Force the plain look (used for the logo), ignoring shop pin styles and symbols. */
+  plain?: boolean;
 }
 
-export default function ColorPeg({ colorIndex, size, selected, onPress, disabled, goldBorder }: ColorPegProps) {
-  const { activePinStyle } = useGame();
-  const pinStyle = PEG_STYLES[activePinStyle] || PEG_STYLES.default;
+export default function ColorPeg({ colorIndex, size, selected, onPress, disabled, goldBorder, plain }: ColorPegProps) {
+  const { activePinStyle, symbolsOn } = useGame();
+  const pinStyle = plain ? PEG_STYLES.default : (PEG_STYLES[activePinStyle] || PEG_STYLES.default);
   const scale = useSharedValue(1);
 
   const handlePress = () => {
@@ -47,10 +50,18 @@ export default function ColorPeg({ colorIndex, size, selected, onPress, disabled
     transform: [{ scale: scale.value }],
   }));
 
-  const bgColor = colorIndex !== null ? Colors.pegs[colorIndex] : 'transparent';
-  const borderColor = selected ? Colors.accentGlow : (goldBorder ? '#FFD700' : (colorIndex !== null ? (pinStyle.borderHighlight !== 'transparent' ? pinStyle.borderHighlight : 'transparent') : Colors.borderLight));
+  const filled = colorIndex !== null;
+  const bgColor = filled ? Colors.pegs[colorIndex] : 'transparent';
+  const borderColor = selected
+    ? Colors.accentGlow
+    : goldBorder
+      ? '#FFD700'
+      : filled
+        ? pinStyle.borderHighlight
+        : Colors.border;
 
-  const hasGlow = colorIndex !== null && pinStyle.glowColor && pinStyle.glowRadius > 0;
+  const hasGlow = filled && pinStyle.glowColor && pinStyle.glowRadius > 0;
+  const inner = size - 6;
 
   return (
     <Pressable onPress={handlePress} disabled={disabled}>
@@ -62,8 +73,8 @@ export default function ColorPeg({ colorIndex, size, selected, onPress, disabled
             height: size,
             borderRadius: size / 2,
             borderColor,
-            borderWidth: selected ? 3 : (colorIndex !== null || goldBorder ? 2 : 2),
-            borderStyle: colorIndex === null && !selected ? 'dashed' : 'solid',
+            borderWidth: selected ? 3 : 2,
+            backgroundColor: filled ? 'transparent' : 'rgba(255,255,255,0.04)',
           },
           hasGlow && {
             shadowColor: pinStyle.glowColor!,
@@ -75,20 +86,44 @@ export default function ColorPeg({ colorIndex, size, selected, onPress, disabled
           animatedStyle,
         ]}
       >
-        {colorIndex !== null ? (
-          <LinearGradient
-            colors={
-              pinStyle.shimmer
-                ? ['rgba(255,255,255,0.5)', bgColor, 'rgba(200,200,255,0.2)']
-                : ['rgba(255,255,255,0.35)', bgColor, 'rgba(0,0,0,0.15)']
-            }
-            locations={[0, 0.45, 1]}
-            start={{ x: 0.3, y: 0 }}
-            end={{ x: 0.7, y: 1 }}
-            style={[styles.gradient, { borderRadius: (size - 6) / 2 }]}
-          />
+        {filled ? (
+          <View style={{ width: inner, height: inner, borderRadius: inner / 2, overflow: 'hidden', backgroundColor: bgColor }}>
+            {/* Soft top light and bottom shade give the peg a rounded, glossy look. */}
+            <LinearGradient
+              colors={
+                pinStyle.shimmer
+                  ? ['rgba(255,255,255,0.55)', 'rgba(255,255,255,0.05)', 'rgba(200,200,255,0.25)']
+                  : ['rgba(255,255,255,0.38)', 'rgba(255,255,255,0)', 'rgba(0,0,0,0.28)']
+              }
+              locations={[0, 0.5, 1]}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <View
+              style={{
+                position: 'absolute',
+                top: inner * 0.12,
+                left: inner * 0.2,
+                width: inner * 0.34,
+                height: inner * 0.2,
+                borderRadius: inner * 0.1,
+                backgroundColor: 'rgba(255,255,255,0.35)',
+                transform: [{ rotate: '-25deg' }],
+              }}
+            />
+            {symbolsOn && !plain && (
+              <View style={styles.symbolWrap}>
+                <MaterialCommunityIcons
+                  name={Colors.pegSymbols[colorIndex] as any}
+                  size={Math.round(inner * 0.5)}
+                  color="rgba(0,0,0,0.6)"
+                />
+              </View>
+            )}
+          </View>
         ) : (
-          <View style={[styles.emptyDot, { width: size * 0.25, height: size * 0.25, borderRadius: size * 0.125 }]} />
+          selected ? <View style={[styles.emptyDot, { width: size * 0.18, height: size * 0.18, borderRadius: size * 0.09 }]} /> : null
         )}
       </Animated.View>
     </Pressable>
@@ -99,13 +134,13 @@ const styles = StyleSheet.create({
   peg: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
   },
-  gradient: {
+  symbolWrap: {
     ...StyleSheet.absoluteFillObject,
-    margin: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emptyDot: {
-    backgroundColor: Colors.borderLight,
+    backgroundColor: Colors.accentGlow,
   },
 });

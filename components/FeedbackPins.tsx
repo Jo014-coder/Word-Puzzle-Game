@@ -1,33 +1,36 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
-  withSpring,
+  withSequence,
+  withTiming,
 } from 'react-native-reanimated';
 import Colors from '@/constants/colors';
 import { FeedbackPeg } from '@/contexts/GameContext';
 
-const FEEDBACK_STYLE = {
-  green: Colors.correctPeg,
-  yellow: Colors.misplacedPeg,
-  grey: Colors.wrongPeg,
-  borderColor: 'rgba(255,255,255,0.15)',
-  borderWidth: 1,
-  shadowColor: 'transparent',
-  shadowRadius: 0,
-};
+interface FeedbackPinProps {
+  /** null = no feedback yet (keeps the space so rows do not jump). */
+  peg: FeedbackPeg | null;
+  index: number;
+  size: number;
+  animated: boolean;
+  testID?: string;
+}
 
-function FeedbackPin({ peg, index, pinSize, animated, style }: {
-  peg: FeedbackPeg; index: number; pinSize: number; animated: boolean;
-  style: typeof FEEDBACK_STYLE;
-}) {
+// One clue marker, shown directly under the peg it describes.
+// Each clue has its own shape as well as its own colour, so it can be read without relying on colour:
+//   right colour, right place  = solid green dot
+//   right colour, wrong place  = hollow yellow ring
+//   colour not in the code     = small grey dot
+export function FeedbackPin({ peg, index, size, animated, testID }: FeedbackPinProps) {
   const scale = useSharedValue(animated ? 0 : 1);
 
   useEffect(() => {
     if (animated) {
-      scale.value = withDelay(index * 150, withSpring(1, { damping: 6, stiffness: 200 }));
+      // A short, crisp pop that always settles (a loose spring kept wobbling for seconds).
+      scale.value = withDelay(index * 110, withSequence(withTiming(1.3, { duration: 140 }), withTiming(1, { duration: 120 })));
     }
   }, [animated]);
 
@@ -35,62 +38,18 @@ function FeedbackPin({ peg, index, pinSize, animated, style }: {
     transform: [{ scale: scale.value }],
   }));
 
-  const color = peg === 'green' ? style.green : peg === 'yellow' ? style.yellow : style.grey;
-  const hasShadow = style.shadowRadius > 0 && peg !== 'grey';
+  if (peg === null) return <View style={{ width: size, height: size }} />;
+
+  const shape =
+    peg === 'green'
+      ? { width: size, height: size, borderRadius: size / 2, backgroundColor: Colors.correctBright }
+      : peg === 'yellow'
+        ? { width: size, height: size, borderRadius: size / 2, borderWidth: Math.max(2.5, size * 0.26), borderColor: Colors.misplacedBright }
+        : { width: size * 0.42, height: size * 0.42, borderRadius: size * 0.21, backgroundColor: Colors.wrongPeg };
 
   return (
-    <Animated.View
-      style={[
-        {
-          width: pinSize,
-          height: pinSize,
-          borderRadius: pinSize / 2,
-          backgroundColor: color,
-          marginHorizontal: 2,
-          borderWidth: style.borderWidth,
-          borderColor: style.borderColor,
-        },
-        hasShadow && {
-          shadowColor: color,
-          shadowOffset: { width: 0, height: 0 },
-          shadowOpacity: 0.8,
-          shadowRadius: style.shadowRadius,
-          elevation: 4,
-        },
-        animStyle,
-      ]}
-    />
-  );
-}
-
-interface FeedbackPinsProps {
-  feedback: FeedbackPeg[];
-  pinSize?: number;
-  animated?: boolean;
-}
-
-export default function FeedbackPins({ feedback, pinSize = 10, animated = false }: FeedbackPinsProps) {
-  const style = FEEDBACK_STYLE;
-
-  return (
-    <View style={styles.container}>
-      {feedback.map((peg, i) => (
-        <FeedbackPin
-          key={i}
-          peg={peg}
-          index={i}
-          pinSize={pinSize}
-          animated={animated}
-          style={style}
-        />
-      ))}
+    <View testID={testID} accessibilityLabel={peg === 'green' ? 'Right colour, right place' : peg === 'yellow' ? 'Right colour, wrong place' : 'Not in the code'} style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Animated.View style={[shape, animStyle]} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-});
