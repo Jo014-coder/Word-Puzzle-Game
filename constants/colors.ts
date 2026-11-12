@@ -16,6 +16,8 @@ const Colors = {
   correctPeg: '#16A34A',
   misplacedPeg: '#CA8A04',
   wrongPeg: '#6B7280',
+  correctBright: '#22C55E',
+  misplacedBright: '#FACC15',
 
   coin: '#FFD93D',
   streak: '#FF6B6B',
@@ -26,10 +28,10 @@ const Colors = {
   pegs: [
     '#EF4444',
     '#3B82F6',
-    '#EAB308',
+    '#FACC15',
     '#22C55E',
     '#A855F7',
-    '#FF8C00',
+    '#22D3EE',
   ] as string[],
 
   pegNames: [
@@ -38,10 +40,13 @@ const Colors = {
     'Yellow',
     'Green',
     'Purple',
-    'Orange',
+    'Aqua',
   ] as string[],
 
-  pegEmojis: ['🔴', '🔵', '🟡', '🟢', '🟣', '🟠'] as string[],
+  // Shapes shown on pegs when colour blind mode is on (MaterialCommunityIcons names).
+  pegSymbols: ['triangle', 'square', 'star', 'circle', 'rhombus', 'plus-thick'] as string[],
+
+  pegEmojis: ['🔴', '🔵', '🟡', '🟢', '🟣', '🩵'] as string[],
 
   difficultyColors: {
     easy: '#22C55E',

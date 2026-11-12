@@ -19,31 +19,103 @@ import { Difficulty, DIFFICULTY_CONFIG, GameMode } from '@/constants/game';
 import Toast from './Toast';
 import LeaderboardModal from './LeaderboardModal';
 import HowToPlayModal from './HowToPlayModal';
-import { showPrivacyOptions } from '@/lib/ads';
+import SettingsModal from './SettingsModal';
+import ColorPeg from './ColorPeg';
+import { LinearGradient } from 'expo-linear-gradient';
 
-function ShimmerTitle() {
-  const shimmer = useSharedValue(0);
+const LOGO = ['G', 'R', 'I', 'D', 'D', 'L'];
+
+// The logo: one peg per letter, in the six game colours.
+function LogoPeg({ letter, index, size }: { letter: string; index: number; size: number }) {
+  const drop = useSharedValue(0);
 
   useEffect(() => {
-    shimmer.value = withRepeat(
-      withSequence(
-        withTiming(1, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-        withTiming(0, { duration: 2000, easing: Easing.inOut(Easing.ease) }),
-      ),
-      -1,
-      false
-    );
+    drop.value = withDelay(index * 70, withTiming(1, { duration: 450, easing: Easing.out(Easing.back(1.8)) }));
   }, []);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: 0.7 + shimmer.value * 0.3,
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: drop.value,
+    transform: [{ translateY: (1 - drop.value) * -18 }, { scale: 0.6 + drop.value * 0.4 }],
   }));
 
   return (
-    <Animated.View style={animatedStyle}>
-      <Text style={styles.title}>GRIDDL</Text>
+    <Animated.View style={animStyle}>
+      <ColorPeg colorIndex={index} size={size} disabled plain />
+      <View style={styles.logoLetterWrap} pointerEvents="none">
+        <Text style={[styles.logoLetter, { fontSize: size * 0.46 }]}>{letter}</Text>
+      </View>
     </Animated.View>
   );
+}
+
+function Logo() {
+  const { width } = useWindowDimensions();
+  const size = Math.min(52, Math.floor((Math.min(width, 420) - 40 - 5 * 8) / 6));
+  return (
+    <View style={styles.logoRow} accessibilityRole="header" accessibilityLabel="Griddl">
+      {LOGO.map((l, i) => <LogoPeg key={i} letter={l} index={i} size={size} />)}
+    </View>
+  );
+}
+
+const STREAK_REWARDS: { day: number; label: string; icon: string }[] = [
+  { day: 3, label: '+15 coins', icon: 'circle-multiple' },
+  { day: 5, label: 'Free hint', icon: 'lightbulb-on' },
+  { day: 7, label: 'Gold pegs', icon: 'star-circle' },
+  { day: 10, label: 'Shield', icon: 'shield-check' },
+  { day: 15, label: 'Obsidian', icon: 'image-filter-hdr' },
+];
+
+// Shows what the player unlocks by keeping their streak going.
+function StreakRewards({ streak }: { streak: number }) {
+  const next = STREAK_REWARDS.find(r => r.day > streak);
+  return (
+    <View style={styles.rewardsCard}>
+      <View style={styles.rewardsHeader}>
+        <Text style={styles.sectionLabelInline}>STREAK REWARDS</Text>
+        <Text style={styles.rewardsNext}>
+          {next ? `${next.day - streak} ${next.day - streak === 1 ? 'day' : 'days'} to ${next.label.toLowerCase()}` : 'All unlocked!'}
+        </Text>
+      </View>
+      <View style={styles.rewardsRow}>
+        {STREAK_REWARDS.map(r => {
+          const done = streak >= r.day;
+          const isNext = next?.day === r.day;
+          return (
+            <View key={r.day} style={styles.rewardItem}>
+              <View style={[styles.rewardBubble, done && styles.rewardBubbleDone, isNext && styles.rewardBubbleNext]}>
+                <MaterialCommunityIcons
+                  name={(done ? 'check-bold' : r.icon) as any}
+                  size={18}
+                  color={done ? '#111827' : isNext ? Colors.coin : Colors.textMuted}
+                />
+              </View>
+              <Text style={[styles.rewardDay, (done || isNext) && { color: Colors.textPrimary }]}>Day {r.day}</Text>
+              <Text style={styles.rewardLabel} numberOfLines={1}>{r.label}</Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+function useTimeToMidnight() {
+  const calc = () => {
+    const now = new Date();
+    const next = new Date(now);
+    next.setHours(24, 0, 0, 0);
+    const mins = Math.max(1, Math.round((next.getTime() - now.getTime()) / 60000));
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+  const [label, setLabel] = useState(calc);
+  useEffect(() => {
+    const t = setInterval(() => setLabel(calc()), 30000);
+    return () => clearInterval(t);
+  }, []);
+  return label;
 }
 
 function ModeButton({ mode, icon, label, description, selected, onPress, delay, children }: {
@@ -68,7 +140,7 @@ function ModeButton({ mode, icon, label, description, selected, onPress, delay, 
   }));
 
   return (
-    <Animated.View style={animStyle}>
+    <Animated.View style={[animStyle, { flex: 1 }]}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
@@ -77,14 +149,14 @@ function ModeButton({ mode, icon, label, description, selected, onPress, delay, 
           { opacity: pressed ? 0.8 : 1, transform: [{ scale: pressed ? 0.97 : 1 }] },
         ]}
       >
-        <View style={styles.modeIconRow}>
+        <View style={[styles.modeIconBubble, selected && { backgroundColor: 'rgba(108,92,231,0.25)' }]}>
           <MaterialCommunityIcons
             name={icon as any}
-            size={24}
-            color={selected ? Colors.accent : Colors.textSecondary}
+            size={22}
+            color={selected ? Colors.accentGlow : Colors.textSecondary}
           />
-          <Text style={[styles.modeLabel, selected && styles.modeLabelSelected]}>{label}</Text>
         </View>
+        <Text style={[styles.modeLabel, selected && styles.modeLabelSelected]}>{label}</Text>
         <Text style={styles.modeDesc}>{description}</Text>
         {children}
       </Pressable>
@@ -155,11 +227,12 @@ function DailyDiffToggle({ onSelect }: { onSelect: (d: Difficulty) => void }) {
 }
 
 export default function HomeScreen() {
-  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame, openShop, ownedItems, toastMessage, toastType, clearToast } = useGame();
+  const { selectMode, selectDifficulty, gameMode, streak, coins, hintTokens, gamesWon, gamesPlayed, dailyHardUnlocked, dailyPlayed, lastDailyGame, lastWinDate, openShop, ownedItems, toastMessage, toastType, clearToast } = useGame();
   const insets = useSafeAreaInsets();
-  const webTop = Platform.OS === 'web' ? 67 : 0;
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const nextIn = useTimeToMidnight();
 
   useEffect(() => {
     AsyncStorage.getItem('hasSeenTutorial').then(val => {
@@ -176,126 +249,154 @@ export default function HomeScreen() {
 
   const today = new Date();
   const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const dateLabel = today.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' });
   const dailyAlreadyPlayed = !!(dailyPlayed[`${todayKey}_medium`] || dailyPlayed[`${todayKey}_hard`]);
-  const hasDailyResult = !!(lastDailyGame && lastDailyGame.date === todayKey);
+  const dailyWon = dailyAlreadyPlayed && lastDailyGame?.date === todayKey && lastDailyGame.phase === 'won';
   const extremeUnlocked = ownedItems.includes('extreme');
+  const wonToday = lastWinDate === todayKey;
+  const choosingDailyLevel = gameMode === 'daily' && dailyHardUnlocked && !dailyAlreadyPlayed;
+
+  const streakLine = streak === 0
+    ? 'Win a game today to start a streak'
+    : wonToday
+      ? `${streak} day streak. See you tomorrow!`
+      : `${streak} day streak. Win today to keep it!`;
 
   return (
     <ScrollView
       style={styles.container}
-      contentContainerStyle={{ paddingTop: insets.top + webTop + 16, paddingBottom: 32, backgroundColor: 'transparent' }}
+      contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 28, backgroundColor: 'transparent' }}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Ionicons name="flame" size={18} color={Colors.streak} />
+        <View style={styles.statChip}>
+          <Ionicons name="flame" size={16} color={Colors.streak} />
           <Text style={styles.statValue}>{streak}</Text>
         </View>
-        <Pressable onPress={openShop} style={styles.statItem} hitSlop={8}>
-          <MaterialCommunityIcons name="circle-multiple" size={18} color={Colors.coin} />
+        <Pressable onPress={openShop} style={styles.statChip} hitSlop={6} accessibilityRole="button" accessibilityLabel="Coins. Open shop">
+          <MaterialCommunityIcons name="circle-multiple" size={16} color={Colors.coin} />
           <Text style={styles.statValue}>{coins}</Text>
-          <Ionicons name="chevron-forward" size={12} color={Colors.textMuted} />
         </Pressable>
-        {hintTokens > 0 && (
-          <View style={styles.statItem}>
-            <Ionicons name="bulb" size={18} color="#06B6D4" />
-            <Text style={styles.statValue}>{hintTokens}</Text>
-          </View>
-        )}
-        <Pressable onPress={() => setShowHelp(true)} style={styles.helpButton} hitSlop={8} accessibilityRole="button" accessibilityLabel="How to play">
-          <Ionicons name="help-circle-outline" size={22} color={Colors.textMuted} />
+        <View style={styles.statChip}>
+          <Ionicons name="bulb" size={16} color="#06B6D4" />
+          <Text style={styles.statValue}>{hintTokens}</Text>
+        </View>
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={() => setShowSettings(true)} style={styles.iconButton} hitSlop={8} accessibilityRole="button" accessibilityLabel="Settings">
+          <Ionicons name="settings-outline" size={20} color={Colors.textSecondary} />
         </Pressable>
       </View>
 
       <View style={styles.titleSection}>
-        <ShimmerTitle />
+        <Logo />
         <Text style={styles.tagline}>Crack the colour code</Text>
       </View>
 
-      <View style={styles.modesSection}>
-        <Text style={styles.sectionLabel}>GAME MODE</Text>
-        <ModeButton
-          mode="daily"
-          icon="calendar-today"
-          label="Daily Challenge"
-          description={dailyAlreadyPlayed ? "Played! Tap to view your result." : "One try per day. Can you crack it?"}
-          selected={gameMode === 'daily'}
-          onPress={() => selectMode('daily')}
-          delay={100}
+      <Pressable
+        onPress={() => selectMode('daily')}
+        accessibilityRole="button"
+        accessibilityLabel="Daily Challenge"
+        style={({ pressed }) => [{ opacity: pressed ? 0.92 : 1, transform: [{ scale: pressed ? 0.985 : 1 }] }]}
+      >
+        <LinearGradient
+          colors={dailyAlreadyPlayed ? ['#2b2f55', '#1f2440'] : ['#7C6CF2', '#5B45D6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.dailyCard}
         >
-          {gameMode === 'daily' && dailyHardUnlocked && !dailyAlreadyPlayed && (
+          <View style={styles.dailyTopRow}>
+            <Text style={styles.dailyKicker}>DAILY CHALLENGE</Text>
+            <Text style={styles.dailyDate}>{dateLabel}</Text>
+          </View>
+          <Text style={styles.dailyTitle}>
+            {dailyAlreadyPlayed ? (dailyWon ? 'Cracked it!' : 'Not today') : "Today's code is ready"}
+          </Text>
+          <Text style={styles.dailySub}>
+            {dailyAlreadyPlayed ? `Next code in ${nextIn}` : 'One code a day. The same for everyone.'}
+          </Text>
+
+          {choosingDailyLevel ? (
             <DailyDiffToggle onSelect={selectDifficulty} />
+          ) : (
+            <View style={styles.dailyBottomRow}>
+              <View style={styles.dailyStreak}>
+                <Ionicons name="flame" size={14} color={streak > 0 ? '#FFB199' : 'rgba(255,255,255,0.6)'} />
+                <Text style={styles.dailyStreakText}>{streakLine}</Text>
+              </View>
+              <View style={[styles.dailyCta, dailyAlreadyPlayed && styles.dailyCtaDone]}>
+                <Text style={[styles.dailyCtaText, dailyAlreadyPlayed && { color: Colors.textPrimary }]}>
+                  {dailyAlreadyPlayed ? 'View' : 'Play'}
+                </Text>
+                <Ionicons name={dailyAlreadyPlayed ? 'eye-outline' : 'play'} size={14} color={dailyAlreadyPlayed ? Colors.textPrimary : '#4A36C9'} />
+              </View>
+            </View>
           )}
-        </ModeButton>
+        </LinearGradient>
+      </Pressable>
+
+      <Text style={[styles.sectionLabel, { marginTop: 22 }]}>MORE WAYS TO PLAY</Text>
+      <View style={styles.modeRow}>
         <ModeButton
           mode="timeAttack"
           icon="timer-outline"
           label="Time Attack"
-          description="60 seconds. Solve as many as you can."
+          description="60 seconds. Crack as many as you can."
           selected={gameMode === 'timeAttack'}
           onPress={() => selectMode('timeAttack')}
-          delay={200}
+          delay={150}
         />
         <ModeButton
           mode="endless"
           icon="infinity"
-          label="Endless Mode"
-          description="Practice and train. Build your streak."
+          label="Practice"
+          description="No timer, no pressure. Play as long as you like."
           selected={gameMode === 'endless'}
           onPress={() => selectMode('endless')}
-          delay={300}
+          delay={220}
         />
       </View>
 
       {gameMode && gameMode !== 'daily' && (
         <View style={styles.diffSection}>
-          <Text style={styles.sectionLabel}>DIFFICULTY</Text>
+          <Text style={styles.sectionLabel}>CHOOSE A LEVEL</Text>
           <View style={styles.diffRow}>
-            <DifficultyButton difficulty="easy" onPress={() => selectDifficulty('easy')} delay={100} />
-            <DifficultyButton difficulty="medium" onPress={() => selectDifficulty('medium')} delay={200} />
+            <DifficultyButton difficulty="easy" onPress={() => selectDifficulty('easy')} delay={0} />
+            <DifficultyButton difficulty="medium" onPress={() => selectDifficulty('medium')} delay={60} />
           </View>
           <View style={[styles.diffRow, { marginTop: 10 }]}>
-            <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={300} />
-            <DifficultyButton difficulty="extreme" onPress={() => selectDifficulty('extreme')} delay={400} locked={!extremeUnlocked} />
+            <DifficultyButton difficulty="hard" onPress={() => selectDifficulty('hard')} delay={120} />
+            <DifficultyButton difficulty="extreme" onPress={() => selectDifficulty('extreme')} delay={180} locked={!extremeUnlocked} />
           </View>
         </View>
       )}
 
-      {gamesPlayed > 0 && (
-        <View style={styles.miniStats}>
-          <Text style={styles.miniStatText}>
-            {gamesWon}/{gamesPlayed} won
-          </Text>
-        </View>
-      )}
+      <StreakRewards streak={streak} />
 
       <View style={styles.bottomButtons}>
-        <Pressable onPress={openShop} style={styles.shopButton}>
+        <Pressable onPress={openShop} style={styles.bottomButton}>
           <Ionicons name="storefront-outline" size={18} color={Colors.accentGlow} />
-          <Text style={styles.shopButtonText}>Shop</Text>
+          <Text style={[styles.bottomButtonText, { color: Colors.accentGlow }]}>Shop</Text>
         </Pressable>
-        {gameMode === 'timeAttack' && (
-          <Pressable onPress={() => setShowLeaderboard(true)} style={styles.leaderboardButton}>
-            <MaterialCommunityIcons name="trophy-outline" size={18} color={Colors.coin} />
-            <Text style={styles.leaderboardButtonText}>Leaderboard</Text>
-          </Pressable>
-        )}
+        <Pressable onPress={() => setShowLeaderboard(true)} style={styles.bottomButton}>
+          <MaterialCommunityIcons name="trophy-outline" size={18} color={Colors.coin} />
+          <Text style={[styles.bottomButtonText, { color: Colors.coin }]}>Best scores</Text>
+        </Pressable>
+        <Pressable onPress={() => setShowHelp(true)} style={styles.bottomButton}>
+          <Ionicons name="help-circle-outline" size={18} color={Colors.textSecondary} />
+          <Text style={[styles.bottomButtonText, { color: Colors.textSecondary }]}>How to play</Text>
+        </Pressable>
       </View>
 
-      {Platform.OS !== 'web' && (
-        <Pressable
-          onPress={() => { void showPrivacyOptions(); }}
-          style={styles.privacyLink}
-          hitSlop={8}
-          accessibilityRole="button"
-        >
-          <Text style={styles.privacyLinkText}>Privacy choices</Text>
-        </Pressable>
+      {gamesPlayed > 0 && (
+        <Text style={styles.miniStatText}>
+          {gamesWon} of {gamesPlayed} games won
+        </Text>
       )}
 
       <LeaderboardModal visible={showLeaderboard} onClose={() => setShowLeaderboard(false)} />
       <HowToPlayModal visible={showHelp} onClose={handleCloseHelp} />
+      <SettingsModal visible={showSettings} onClose={() => setShowSettings(false)} onHowToPlay={() => setShowHelp(true)} />
 
       {toastMessage && (
         <Toast message={toastMessage} type={toastType} onHide={clearToast} />
@@ -305,79 +406,158 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  privacyLink: {
-    alignSelf: 'center',
-    marginTop: 16,
-    marginBottom: 8,
-    paddingVertical: 4,
-  },
-  privacyLinkText: {
-    fontSize: 12,
-    color: '#8b8fa3',
-    textDecorationLine: 'underline',
-  },
   container: {
     flex: 1,
     backgroundColor: 'transparent',
     paddingHorizontal: 20,
-    paddingBottom: 0,
   },
   statsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginBottom: 24,
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 28,
   },
-  statItem: {
+  statChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    backgroundColor: 'rgba(30,41,55,0.85)',
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 18,
   },
   statValue: {
     color: Colors.textPrimary,
-    fontWeight: '700',
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter_700Bold',
   },
-  helpButton: {
-    flexDirection: 'row',
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
-    marginLeft: 2,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(30,41,55,0.85)',
+    borderWidth: 1,
+    borderColor: Colors.border,
   },
   titleSection: {
     alignItems: 'center',
-    marginBottom: 32,
+    marginBottom: 28,
   },
-  title: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: Colors.textPrimary,
-    letterSpacing: 8,
+  logoRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  logoLetterWrap: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoLetter: {
+    color: '#FFFFFF',
     fontFamily: 'Inter_700Bold',
+    textShadowColor: 'rgba(0,0,0,0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   tagline: {
-    fontSize: 15,
+    fontSize: 14,
     color: Colors.textSecondary,
-    marginTop: 8,
+    marginTop: 14,
     fontFamily: 'Inter_400Regular',
-    letterSpacing: 1,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
-  modesSection: {
-    marginBottom: 24,
+  dailyCard: {
+    borderRadius: 22,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  dailyTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  dailyKicker: {
+    fontSize: 11,
+    letterSpacing: 2,
+    color: 'rgba(255,255,255,0.85)',
+    fontFamily: 'Inter_700Bold',
+  },
+  dailyDate: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.75)',
+    fontFamily: 'Inter_400Regular',
+  },
+  dailyTitle: {
+    fontSize: 24,
+    color: '#FFFFFF',
+    fontFamily: 'Inter_700Bold',
+  },
+  dailySub: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.82)',
+    fontFamily: 'Inter_400Regular',
+    marginTop: 4,
+  },
+  dailyBottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 18,
+    gap: 10,
+  },
+  dailyStreak: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    flex: 1,
+  },
+  dailyStreakText: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    fontFamily: 'Inter_600SemiBold',
+    flexShrink: 1,
+  },
+  dailyCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 22,
+  },
+  dailyCtaDone: {
+    backgroundColor: 'rgba(255,255,255,0.14)',
+  },
+  dailyCtaText: {
+    fontSize: 15,
+    color: '#4A36C9',
+    fontFamily: 'Inter_700Bold',
   },
   sectionLabel: {
     fontSize: 11,
-    fontWeight: '700',
     color: Colors.textMuted,
     letterSpacing: 2,
     marginBottom: 12,
     fontFamily: 'Inter_600SemiBold',
   },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 20,
+  },
   modeButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
+    flex: 1,
+    backgroundColor: 'rgba(30,41,55,0.85)',
+    borderRadius: 18,
     padding: 16,
-    marginBottom: 10,
     borderWidth: 1.5,
     borderColor: Colors.border,
   },
@@ -385,25 +565,28 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
     backgroundColor: '#1a1d3a',
   },
-  modeIconRow: {
-    flexDirection: 'row',
+  modeIconBubble: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     alignItems: 'center',
-    gap: 10,
-    marginBottom: 4,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 12,
   },
   modeLabel: {
     fontSize: 16,
-    fontWeight: '700',
     color: Colors.textPrimary,
-    fontFamily: 'Inter_600SemiBold',
+    fontFamily: 'Inter_700Bold',
   },
   modeLabelSelected: {
     color: Colors.accentGlow,
   },
   modeDesc: {
-    fontSize: 13,
-    color: Colors.textMuted,
-    marginTop: 2,
+    fontSize: 12,
+    lineHeight: 17,
+    color: Colors.textSecondary,
+    marginTop: 4,
     fontFamily: 'Inter_400Regular',
   },
   diffSection: {
@@ -414,51 +597,49 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   diffButton: {
-    backgroundColor: Colors.surface,
-    borderRadius: 14,
+    backgroundColor: 'rgba(30,41,55,0.85)',
+    borderRadius: 16,
     padding: 14,
     borderWidth: 1.5,
     alignItems: 'center',
-    minHeight: 88,
+    minHeight: 84,
     justifyContent: 'center',
   },
   diffButtonLocked: {
-    backgroundColor: 'rgba(30,41,55,0.6)',
+    backgroundColor: 'rgba(30,41,55,0.5)',
     borderStyle: 'dashed' as any,
   },
   diffDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     marginBottom: 8,
   },
   diffLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    fontFamily: 'Inter_600SemiBold',
+    fontSize: 15,
+    fontFamily: 'Inter_700Bold',
     marginBottom: 4,
   },
   diffDesc: {
-    fontSize: 9,
-    color: Colors.textMuted,
+    fontSize: 11,
+    color: Colors.textSecondary,
     textAlign: 'center',
     fontFamily: 'Inter_400Regular',
-    lineHeight: 13,
   },
   dailyToggle: {
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    justifyContent: 'center',
+    gap: 10,
+    marginTop: 16,
   },
   dailyTogglePill: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    backgroundColor: Colors.surfaceLight,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 10,
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(17,24,39,0.55)',
+    paddingVertical: 11,
+    borderRadius: 14,
   },
   dailyToggleDot: {
     width: 8,
@@ -466,49 +647,96 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   dailyToggleText: {
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: 'Inter_700Bold',
+  },
+  rewardsCard: {
+    backgroundColor: 'rgba(30,41,55,0.6)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    padding: 16,
+    marginBottom: 14,
+  },
+  rewardsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 14,
+  },
+  sectionLabelInline: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    letterSpacing: 2,
     fontFamily: 'Inter_600SemiBold',
   },
-  miniStats: {
-    alignItems: 'center',
-    marginTop: 8,
+  rewardsNext: {
+    fontSize: 12,
+    color: Colors.coin,
+    fontFamily: 'Inter_600SemiBold',
   },
-  miniStatText: {
-    fontSize: 13,
+  rewardsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  rewardItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  rewardBubble: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    marginBottom: 6,
+  },
+  rewardBubbleDone: {
+    backgroundColor: Colors.coin,
+    borderColor: Colors.coin,
+  },
+  rewardBubbleNext: {
+    borderColor: Colors.coin,
+  },
+  rewardDay: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontFamily: 'Inter_700Bold',
+  },
+  rewardLabel: {
+    fontSize: 10,
     color: Colors.textMuted,
     fontFamily: 'Inter_400Regular',
+    marginTop: 1,
+  },
+  miniStatText: {
+    fontSize: 12,
+    color: Colors.textMuted,
+    fontFamily: 'Inter_400Regular',
+    textAlign: 'center',
+    marginTop: 14,
   },
   bottomButtons: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 24,
-    marginTop: 16,
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
   },
-  shopButton: {
+  bottomButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: 'rgba(30,41,55,0.6)',
   },
-  shopButtonText: {
-    fontSize: 14,
-    color: Colors.accentGlow,
-    fontWeight: '600',
-    fontFamily: 'Inter_600SemiBold',
-  },
-  leaderboardButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-  },
-  leaderboardButtonText: {
-    fontSize: 14,
-    color: Colors.coin,
-    fontWeight: '600',
+  bottomButtonText: {
+    fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
   },
 });

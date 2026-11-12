@@ -11,6 +11,10 @@ import { queryClient } from "@/lib/query-client";
 import { GameProvider, useGame } from "@/contexts/GameContext";
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import AdOverlay from "@/components/AdOverlay";
+import { ThemeProvider, DarkTheme } from "@react-navigation/native";
+
+// Transparent navigation theme so the chosen game background always shows through.
+const NavTheme = { ...DarkTheme, colors: { ...DarkTheme.colors, background: "transparent" } };
 import {
   useFonts,
   Inter_400Regular,
@@ -67,6 +71,7 @@ function ThemedBackground({ children }: { children: React.ReactNode }) {
 function RootLayoutNav() {
   return (
     <ThemedBackground>
+      <ThemeProvider value={NavTheme}>
       <Stack
         screenOptions={{
           headerShown: false,
@@ -75,6 +80,7 @@ function RootLayoutNav() {
       >
         <Stack.Screen name="index" />
       </Stack>
+      </ThemeProvider>
     </ThemedBackground>
   );
 }

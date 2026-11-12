@@ -7,12 +7,12 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Ionicons, MaterialCommunityIcons, Feather } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
 import { DIFFICULTY_CONFIG, TIME_ATTACK_MAX_ATTEMPTS, TIME_ATTACK_DURATION } from '@/constants/game';
-import GuessRowView from './GuessRowView';
+import GuessRowView, { fitBoard } from './GuessRowView';
 import ColorPeg from './ColorPeg';
 import Toast from './Toast';
 
@@ -117,11 +117,14 @@ function ProgressBar() {
 }
 
 function ColorPalette() {
-  const { selectColor, clearSlot, submitGuess, effectiveDifficulty, difficulty, phase } = useGame();
+  const { selectColor, clearSlot, submitGuess, effectiveDifficulty, difficulty, phase, rows, currentRow } = useGame();
+  const rowFull = !!rows[currentRow] && rows[currentRow].pegs.every(p => p.colorIndex !== null);
   const diff = effectiveDifficulty || difficulty || 'easy';
   const config = DIFFICULTY_CONFIG[diff];
-  const { width } = useWindowDimensions();
-  const paletteSize = Math.min(Math.floor((Math.min(width, 420) - 80) / config.colorCount) - 4, 52);
+  const { width, height } = useWindowDimensions();
+  // On short screens the colour buttons shrink a little so the board gets more room.
+  const paletteCap = height < 620 ? 38 : height < 720 ? 46 : 54;
+  const paletteSize = Math.min(Math.floor((Math.min(width, 420) - 32 - 10 * (config.colorCount - 1)) / config.colorCount), paletteCap);
 
   if (phase !== 'playing') return null;
 
@@ -134,7 +137,7 @@ function ColorPalette() {
             onPress={() => selectColor(i)}
             testID={`palette-color-${i}`}
             accessibilityRole="button"
-            accessibilityLabel={`Color ${i}`}
+            accessibilityLabel={Colors.pegNames[i]}
             style={({ pressed }) => [
               styles.paletteButton,
               { opacity: pressed ? 0.7 : 1, transform: [{ scale: pressed ? 0.9 : 1 }] },
@@ -149,7 +152,7 @@ function ColorPalette() {
           <Ionicons name="backspace-outline" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Clear</Text>
         </Pressable>
-        <Pressable onPress={submitGuess} testID="submit-button" accessibilityRole="button" accessibilityLabel="Submit" style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : 1 }]}>
+        <Pressable onPress={submitGuess} testID="submit-button" accessibilityRole="button" accessibilityLabel="Submit" style={({ pressed }) => [styles.actionButton, styles.submitButton, { opacity: pressed ? 0.8 : rowFull ? 1 : 0.45 }]}>
           <Ionicons name="checkmark-circle" size={20} color={Colors.textPrimary} />
           <Text style={styles.actionButtonText}>Submit</Text>
         </Pressable>
@@ -167,11 +170,16 @@ export default function GameScreen() {
     ? { ...baseConfig, maxAttempts: TIME_ATTACK_MAX_ATTEMPTS }
     : baseConfig;
   const scrollRef = useRef<ScrollView>(null);
-  const webTop = Platform.OS === 'web' ? 67 : 0;
-  const webBottom = Platform.OS === 'web' ? 34 : 0;
+  const { width: screenWidth } = useWindowDimensions();
+  // The board is sized so that every row fits on screen at once. Players must be able
+  // to see all their earlier guesses without scrolling.
+  const [boardHeight, setBoardHeight] = useState(0);
+  const { pegSize, compact, fits: boardFits } = fitBoard(screenWidth, boardHeight, rows[0]?.pegs.length ?? 4, rows.length);
+  const webTop = Platform.OS === 'web' ? 12 : 0;
+  const webBottom = Platform.OS === 'web' ? 12 : 0;
 
   useEffect(() => {
-    if (currentRow > 3 && scrollRef.current) {
+    if (currentRow > 3 && scrollRef.current && !boardFits) {
       scrollRef.current.scrollToEnd({ animated: true });
     }
   }, [currentRow]);
@@ -186,12 +194,16 @@ export default function GameScreen() {
         style={styles.gridScroll}
         contentContainerStyle={styles.gridContent}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!boardFits}
+        onLayout={e => setBoardHeight(e.nativeEvent.layout.height)}
       >
         {rows.map((row, idx) => (
           <GuessRowView
             key={idx}
             row={row}
             rowIndex={idx}
+            pegSize={pegSize}
+            compact={compact}
             isCurrent={idx === currentRow && phase === 'playing'}
             isShaking={shakeRow === idx}
             isRevealing={revealingRow === idx}
@@ -306,7 +318,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
   },
   progressContainer: {
-    height: 20,
+    height: 22,
     backgroundColor: Colors.surface,
     marginHorizontal: 16,
     borderRadius: 10,
@@ -339,22 +351,25 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 4,
   },
   paletteSection: {
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 6,
-    backgroundColor: Colors.backgroundLight,
+    paddingTop: 14,
+    paddingBottom: 10,
+    backgroundColor: 'rgba(17,24,39,0.82)',
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
   },
   paletteRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 6,
-    marginBottom: 12,
+    gap: 10,
+    marginBottom: 14,
   },
   paletteButton: {
   },
@@ -366,15 +381,18 @@ const styles = StyleSheet.create({
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderRadius: 16,
   },
   deleteButton: {
-    backgroundColor: Colors.surface,
+    flex: 1,
+    backgroundColor: Colors.surfaceLight,
   },
   submitButton: {
+    flex: 2,
     backgroundColor: Colors.accent,
   },
   dailyReviewButtons: {
@@ -439,7 +457,7 @@ const styles = StyleSheet.create({
   actionButtonText: {
     color: Colors.textPrimary,
     fontWeight: '700',
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter_600SemiBold',
   },
 });

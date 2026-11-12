@@ -4,6 +4,12 @@ import * as Haptics from 'expo-haptics';
 import { Platform, Share } from 'react-native';
 import { Difficulty, GameMode, DIFFICULTY_CONFIG, DIFFICULTY_ORDER, WIN_MESSAGES, TIME_ATTACK_DURATION, TIME_ATTACK_BONUS, TIME_ATTACK_MAX_ATTEMPTS, SHOP_ITEMS } from '@/constants/game';
 import Colors from '@/constants/colors';
+import { playSound, preloadSounds, setSoundEnabled } from '@/lib/sounds';
+
+const STORE_URL = 'https://play.google.com/store/apps/details?id=com.jagateliers.griddl';
+const REWARDED_AD_COINS = 10;
+// New players get this many games before any interstitial ad is shown.
+const AD_FREE_GAMES = 3;
 
 export interface PegSlot {
   colorIndex: number | null;
@@ -54,6 +60,12 @@ interface SaveData {
   activePinStyle: string;
   activeBackground: string;
   adsRemoved: boolean;
+  /** Last day the player won a game. Drives the streak. */
+  lastWinDate?: string;
+  /** Last day the daily login bonus was given. */
+  lastLoginDate?: string;
+  soundOn: boolean;
+  symbolsOn: boolean;
 }
 
 const DEFAULT_SAVE: SaveData = {
@@ -76,6 +88,8 @@ const DEFAULT_SAVE: SaveData = {
   activePinStyle: 'default',
   activeBackground: 'bg_default',
   adsRemoved: false,
+  soundOn: true,
+  symbolsOn: false,
 };
 
 export type Screen = 'home' | 'game' | 'result' | 'shop';
@@ -129,9 +143,14 @@ export interface GameState {
   pendingGameStart: { difficulty: Difficulty; mode: GameMode } | null;
   rewardedAdWatched: boolean;
   leaderboard: LeaderboardEntry[];
+  lastWinDate: string;
+  soundOn: boolean;
+  symbolsOn: boolean;
 }
 
 interface GameContextValue extends GameState {
+  toggleSound: () => void;
+  toggleSymbols: () => void;
   selectMode: (mode: GameMode) => void;
   selectDifficulty: (d: Difficulty) => void;
   selectColor: (colorIndex: number) => void;
@@ -328,12 +347,47 @@ export function GameProvider({ children }: { children: ReactNode }) {
     pendingGameStart: null,
     rewardedAdWatched: false,
     leaderboard: [],
+    lastWinDate: '',
+    soundOn: true,
+    symbolsOn: false,
   });
 
   useEffect(() => {
-    loadSave().then(save => {
+    loadSave().then(loaded => {
+      let save = loaded;
       const today = getTodayKey();
-      const claimedToday = save.lastPlayedDate === today;
+      const yesterday = getYesterdayKey();
+
+      // Older saves used one date for both the login bonus and the streak, which stopped
+      // streaks from ever growing. They are now tracked separately.
+      const lastLoginDate = save.lastLoginDate ?? save.lastPlayedDate ?? '';
+      let lastWinDate = save.lastWinDate ?? (save.streak > 0 ? save.lastPlayedDate : '') ?? '';
+      const claimedToday = lastLoginDate === today;
+
+      // A streak only survives if the player won today or yesterday.
+      // A Streak Shield covers one missed day.
+      let streak = save.streak;
+      let streakShield = save.streakShield;
+      let shieldUsedMsg: string | null = null;
+      if (streak > 0 && lastWinDate !== today && lastWinDate !== yesterday) {
+        const twoDaysAgo = new Date();
+        twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+        const twoDaysAgoKey = `${twoDaysAgo.getFullYear()}-${String(twoDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(twoDaysAgo.getDate()).padStart(2, '0')}`;
+        if (streakShield && lastWinDate === twoDaysAgoKey) {
+          streakShield = false;
+          lastWinDate = yesterday;
+          shieldUsedMsg = 'Shield saved your streak!';
+        } else {
+          streak = 0;
+        }
+      }
+      if (streak !== save.streak || streakShield !== save.streakShield || lastWinDate !== save.lastWinDate) {
+        persistSave({ streak, streakShield, lastWinDate });
+      }
+      save = { ...save, streak, streakShield, lastWinDate };
+
+      setSoundEnabled(save.soundOn !== false);
+      preloadSounds();
 
       const cleanedDaily = { ...(save.dailyPlayed || {}) };
       const cutoff = new Date();
@@ -372,19 +426,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
         activePinStyle: save.activePinStyle || 'default',
         activeBackground: (['bg_default','bg_midnight','bg_ocean','bg_nebula','bg_ember','bg_aurora','bg_marble','bg_bauhaus','bg_neon_city','bg_void','bg_obsidian'].includes(save.activeBackground) ? save.activeBackground : 'bg_default'),
         adsRemoved: save.adsRemoved || false,
+        lastWinDate,
+        soundOn: save.soundOn !== false,
+        symbolsOn: !!save.symbolsOn,
+        ...(shieldUsedMsg ? { toastMessage: shieldUsedMsg, toastType: 'milestone' as const } : {}),
       }));
 
-      if (!claimedToday && save.lastPlayedDate !== '') {
-        const newCoins = save.coins + 3;
-        persistSave({ coins: newCoins, lastPlayedDate: today });
-        setState(prev => ({
-          ...prev,
-          coins: newCoins,
-          lastPlayedDate: today,
-          dailyLoginClaimed: true,
-          toastMessage: 'Daily login: +3 coins!',
-          toastType: 'milestone',
-        }));
+      if (!claimedToday) {
+        if (lastLoginDate !== '') {
+          const newCoins = save.coins + 3;
+          persistSave({ coins: newCoins, lastLoginDate: today });
+          setState(prev => ({
+            ...prev,
+            coins: newCoins,
+            dailyLoginClaimed: true,
+            toastMessage: shieldUsedMsg ? `${shieldUsedMsg} Daily login: +3 coins!` : 'Daily login: +3 coins!',
+            toastType: 'milestone',
+          }));
+        } else {
+          persistSave({ lastLoginDate: today });
+        }
       }
 
       AsyncStorage.getItem(LEADERBOARD_KEY).then(data => {
@@ -461,7 +522,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     const lossThreshold = mode === 'timeAttack' ? 2 : 3;
     const losses = mode === 'timeAttack' ? (save.timeAttackLosses || 0) : save.consecutiveLosses;
-    if (losses >= lossThreshold && difficulty !== 'easy') {
+    // The Daily Challenge is never made easier, so every player gets the same puzzle.
+    if (mode !== 'daily' && losses >= lossThreshold && difficulty !== 'easy') {
       const idx = DIFFICULTY_ORDER.indexOf(difficulty);
       effectiveDiff = DIFFICULTY_ORDER[Math.max(0, idx - 1)];
       hiddenReduction = true;
@@ -510,11 +572,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       obsidianTheme: save.obsidianTheme,
       consecutiveLosses: save.consecutiveLosses,
       endlessWinStreak: save.endlessWinStreak,
+      viewingDaily: false,
     }));
   }, []);
 
   const launchGameWithAd = useCallback((difficulty: Difficulty, mode: GameMode) => {
-    if (state.adsRemoved || mode === 'endless') {
+    if (state.adsRemoved || mode === 'endless' || state.gamesPlayed < AD_FREE_GAMES) {
       loadSave().then(save => startGame(difficulty, mode, save));
     } else {
       const now = Date.now();
@@ -526,7 +589,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         loadSave().then(save => startGame(difficulty, mode, save));
       }
     }
-  }, [state.adsRemoved, startGame]);
+  }, [state.adsRemoved, state.gamesPlayed, startGame]);
 
   const selectMode = useCallback((mode: GameMode) => {
     haptic('light');
@@ -612,6 +675,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const selectColor = useCallback((colorIndex: number) => {
     haptic('light');
+    playSound('peg');
     setState(prev => {
       if (prev.phase !== 'playing') return prev;
       const config = DIFFICULTY_CONFIG[prev.effectiveDifficulty || prev.difficulty || 'easy'];
@@ -679,10 +743,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         haptic('success');
         const today = getTodayKey();
         const yesterday = getYesterdayKey();
-        const lastPlayed = prev.lastPlayedDate;
-        const alreadyPlayedToday = lastPlayed === today;
-        const isConsecutiveDay = lastPlayed === yesterday;
-        const newStreak = alreadyPlayedToday ? prev.streak : isConsecutiveDay ? prev.streak + 1 : 1;
+        // Streak = days in a row with at least one win, in any mode.
+        const wonAlreadyToday = prev.lastWinDate === today;
+        const wonYesterday = prev.lastWinDate === yesterday;
+        const newStreak = wonAlreadyToday ? Math.max(prev.streak, 1) : wonYesterday ? prev.streak + 1 : 1;
+        const streakGrew = newStreak > prev.streak;
+        playSound('win');
 
         const DAILY_COINS = [15, 10, 8, 6, 4, 2];
         const TIME_ATTACK_COINS: Record<string, number[]> = {
@@ -700,6 +766,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
           const table = TIME_ATTACK_COINS[diff] ?? TIME_ATTACK_COINS.easy;
           const idx = Math.min(prev.currentRow, table.length - 1);
           coinReward = table[idx];
+        } else {
+          // Practice pays a small amount so a win never shows "+0".
+          const PRACTICE_COINS: Record<string, number> = { easy: 1, medium: 2, hard: 3, extreme: 5 };
+          coinReward = PRACTICE_COINS[prev.effectiveDifficulty || prev.difficulty || 'easy'] ?? 1;
         }
 
         let bonusCoins = 0;
@@ -712,7 +782,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         let newActiveBackground = prev.activeBackground;
 
         let newDailyHard = prev.dailyHardUnlocked;
-        if (newStreak >= 2) {
+        if (streakGrew && newStreak >= 2) {
           if (newStreak === 3) { bonusCoins = 15; milestoneMsg = 'Streak 3 bonus: +15 coins!'; }
           else if (newStreak === 5) { newHintTokens++; milestoneMsg = 'Streak 5: Hint token earned!'; }
           else if (newStreak === 7) { newGold = true; milestoneMsg = 'Streak 7: Gold pegs unlocked!'; }
@@ -725,7 +795,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        if (prev.gameMode === 'daily') {
+        if (prev.gameMode === 'daily' && streakGrew) {
           if (newStreak === 7) { bonusCoins += 10; milestoneMsg = (milestoneMsg ? milestoneMsg + ' ' : '') + '+10 bonus coins!'; }
           else if (newStreak === 14) { bonusCoins += 20; milestoneMsg = '🔥 14-day streak! +20 bonus coins'; }
           else if (newStreak === 30) { bonusCoins += 35; milestoneMsg = '🔥 30-day streak! +35 bonus coins'; }
@@ -734,7 +804,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const isTimeAttack = prev.gameMode === 'timeAttack';
 
         const totalCoinsEarned = coinReward + bonusCoins;
-        const actualCoinsEarned = prev.gameMode === 'endless' ? 0 : totalCoinsEarned;
+        const actualCoinsEarned = totalCoinsEarned;
         const newCoins = prev.coins + actualCoinsEarned;
         const newGamesWon = prev.gamesWon + 1;
         const newGamesPlayed = prev.gamesPlayed + 1;
@@ -761,7 +831,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           streakShield: newShield, gamesPlayed: newGamesPlayed, gamesWon: newGamesWon,
           consecutiveLosses: 0, goldPegsUnlocked: newGold, obsidianTheme: newObsidian,
           endlessWinStreak: newEndlessWinStreak, dailyPlayed: newDailyPlayed,
-          lastPlayedDate: getTodayKey(), dailyHardUnlocked: newDailyHard,
+          lastPlayedDate: getTodayKey(), lastWinDate: today, dailyHardUnlocked: newDailyHard,
           timeAttackLosses: 0, ownedItems: newOwnedItems, activeBackground: newActiveBackground,
           ...(dailyResult ? { lastDailyGame: dailyResult } : {}),
         };
@@ -804,6 +874,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
             dailyPlayed: newDailyPlayed,
             timeAttackLosses: 0,
             timeAttackNextRows: newEmptyRows,
+            lastWinDate: today,
             dailyHardUnlocked: newDailyHard,
             ownedItems: newOwnedItems,
             activeBackground: newActiveBackground,
@@ -832,6 +903,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           endlessWinStreak: newEndlessWinStreak,
           endlessAutoLevelUp: endlessLevelUp,
           dailyPlayed: newDailyPlayed,
+          lastWinDate: today,
           dailyHardUnlocked: newDailyHard,
           lastDailyGame: dailyResult || prev.lastDailyGame,
           ownedItems: newOwnedItems,
@@ -841,16 +913,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       if (isLastAttempt) {
         haptic('error');
-        let newStreak = 0;
+        playSound('lose');
+        // Only losing the Daily Challenge can break a streak.
+        // Practice (Endless) and Time Attack never do.
+        let newStreak = prev.streak;
         let newShield = prev.streakShield;
         let loseMsg = 'Game over!';
         let loseType: 'error' | 'milestone' = 'error';
 
-        if (prev.streakShield) {
-          newShield = false;
-          newStreak = prev.streak;
-          loseMsg = 'Shield saved your streak!';
-          loseType = 'milestone';
+        if (prev.gameMode === 'daily' && prev.streak > 0 && prev.lastWinDate !== getTodayKey()) {
+          if (prev.streakShield) {
+            newShield = false;
+            loseMsg = 'Shield saved your streak!';
+            loseType = 'milestone';
+          } else {
+            newStreak = 0;
+          }
         }
 
         const newConsecutiveLosses = prev.consecutiveLosses + 1;
@@ -916,6 +994,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
 
       haptic('light');
+      playSound('submit');
 
       let nearMissMsg: string | null = null;
       const wrongCount = config.codeLength - realExact;
@@ -1003,6 +1082,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const newHintTokens = prev.hintTokens - 1;
       haptic('success');
+      playSound('hint');
       persistSave({ hintTokens: newHintTokens });
 
       return {
@@ -1043,6 +1123,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const isWinRow = won && ri === (typeof attempts === 'number' ? attempts - 1 : -1);
       text += feedbackLine + (isWinRow ? ' ✅' : '') + '\n';
     }
+    text += `\nCan you crack it? ${STORE_URL}`;
 
     if (Platform.OS === 'web') {
       if (navigator.clipboard) {
@@ -1168,14 +1249,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const completeRewardedAd = useCallback(() => {
     setState(prev => {
       if (prev.adPhase !== 'rewarded') return prev;
-      const newCoins = prev.coins + 3;
+      const newCoins = prev.coins + REWARDED_AD_COINS;
       persistSave({ coins: newCoins });
       return {
         ...prev,
         coins: newCoins,
         adPhase: 'none',
         rewardedAdWatched: true,
-        toastMessage: '+3 coins earned!',
+        toastMessage: `+${REWARDED_AD_COINS} coins earned!`,
         toastType: 'success' as const,
       };
     });
@@ -1189,8 +1270,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   }, [state.adPhase, dismissAd]);
 
+  const toggleSound = useCallback(() => {
+    setState(prev => {
+      const soundOn = !prev.soundOn;
+      setSoundEnabled(soundOn);
+      persistSave({ soundOn });
+      return { ...prev, soundOn };
+    });
+  }, []);
+
+  const toggleSymbols = useCallback(() => {
+    setState(prev => {
+      const symbolsOn = !prev.symbolsOn;
+      persistSave({ symbolsOn });
+      return { ...prev, symbolsOn };
+    });
+  }, []);
+
   const value = useMemo(() => ({
     ...state,
+    toggleSound,
+    toggleSymbols,
     selectMode,
     selectDifficulty,
     selectColor,
