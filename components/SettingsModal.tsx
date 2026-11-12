@@ -1,8 +1,8 @@
-import { View, Text, Pressable, StyleSheet, Modal, Switch } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Modal, Switch, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '@/constants/colors';
 import { useGame } from '@/contexts/GameContext';
-import { hasPrivacyOptions, openPrivacyOptions } from '@/lib/ads';
+import { showPrivacyOptions } from '@/lib/ads';
 
 interface Props {
   visible: boolean;
@@ -49,8 +49,8 @@ export default function SettingsModal({ visible, onClose, onHowToPlay }: Props) 
             <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
           </Pressable>
 
-          {hasPrivacyOptions() && (
-            <Pressable style={styles.row} onPress={() => { onClose(); openPrivacyOptions(); }}>
+          {Platform.OS !== 'web' && (
+            <Pressable style={styles.row} onPress={() => { onClose(); void showPrivacyOptions(); }}>
               <Ionicons name="shield-checkmark-outline" size={20} color={Colors.textSecondary} />
               <View style={styles.rowText}>
                 <Text style={styles.rowLabel}>Privacy choices</Text>

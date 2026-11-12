@@ -1,117 +1,149 @@
-// Real AdMob ads for Android and iOS.
-// Flow: ask for consent (UK/EEA users see Google's consent form), then initialise
-// the SDK and preload one interstitial and one rewarded ad so they show instantly.
-// If an ad is not ready, the game simply continues. No fake ads, no free rewards.
-import mobileAds, {
-  AdsConsent,
-  AdsConsentPrivacyOptionsRequirementStatus,
-  InterstitialAd,
-  RewardedAd,
-  AdEventType,
-  RewardedAdEventType,
-  TestIds,
-} from 'react-native-google-mobile-ads';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  LevelPlay,
+  LevelPlayInitRequest,
+  LevelPlayInterstitialAd,
+  LevelPlayPrivacySettings,
+  LevelPlayRewardedAd,
+} from 'unity-levelplay-mediation';
+import { askForConsent, ensureConsent } from './adConsent';
 
-const INTERSTITIAL_ID = __DEV__ ? TestIds.INTERSTITIAL : 'ca-app-pub-2071050565025322/7780850882';
-const REWARDED_ID = __DEV__ ? TestIds.REWARDED : 'ca-app-pub-2071050565025322/6799090091';
+// Unity LevelPlay keys for Griddl (dashboard: platform.ironsrc.com).
+const APP_KEY = process.env.EXPO_PUBLIC_LEVELPLAY_APP_KEY || '297b75b05';
+const INTERSTITIAL_ID =
+  process.env.EXPO_PUBLIC_LEVELPLAY_INTERSTITIAL_ID || 't2bjoo0ea68s16te';
+const REWARDED_ID =
+  process.env.EXPO_PUBLIC_LEVELPLAY_REWARDED_ID || 'colsasz4r03o91w6';
 
-export const ADS_ARE_PREVIEW = false;
-
-let canRequestAds = false;
-let started = false;
-let interstitial: InterstitialAd | null = null;
-let interstitialReady = false;
-let rewarded: RewardedAd | null = null;
-let rewardedReady = false;
-let privacyOptionsRequired = false;
-
-function loadInterstitial() {
-  if (!canRequestAds) return;
-  interstitialReady = false;
-  interstitial = InterstitialAd.createForAdRequest(INTERSTITIAL_ID);
-  interstitial.addAdEventListener(AdEventType.LOADED, () => { interstitialReady = true; });
-  interstitial.addAdEventListener(AdEventType.ERROR, () => {
-    interstitialReady = false;
-    setTimeout(loadInterstitial, 60_000);
-  });
-  interstitial.load();
-}
-
-function loadRewarded() {
-  if (!canRequestAds) return;
-  rewardedReady = false;
-  rewarded = RewardedAd.createForAdRequest(REWARDED_ID);
-  rewarded.addAdEventListener(RewardedAdEventType.LOADED, () => { rewardedReady = true; });
-  rewarded.addAdEventListener(AdEventType.ERROR, () => {
-    rewardedReady = false;
-    setTimeout(loadRewarded, 60_000);
-  });
-  rewarded.load();
-}
+let initPromise: Promise<void> | null = null;
+let initialised = false;
 
 export async function initAds(): Promise<void> {
-  if (started) return;
-  started = true;
+  if (initialised) return;
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    const consent = await ensureConsent();
+    await LevelPlayPrivacySettings.setGDPRConsent(consent === 'granted');
+    await new Promise<void>((resolve, reject) => {
+      LevelPlay.init(LevelPlayInitRequest.builder(APP_KEY).build(), {
+        onInitSuccess: () => resolve(),
+        onInitFailed: err => reject(new Error(String(err?.errorMessage ?? 'init failed'))),
+      }).catch(reject);
+    });
+    initialised = true;
+    interstitial.loadAd().catch(() => {});
+    rewarded.loadAd().catch(() => {});
+  })().catch(err => {
+    initPromise = null;
+    throw err;
+  });
+  return initPromise;
+}
+
+export async function showPrivacyOptions(): Promise<void> {
+  const consent = await askForConsent();
   try {
-    const info = await AdsConsent.gatherConsent();
-    canRequestAds = info.canRequestAds;
-    privacyOptionsRequired =
-      info.privacyOptionsRequirementStatus === AdsConsentPrivacyOptionsRequirementStatus.REQUIRED;
-  } catch {
-    // If the consent service cannot be reached, fall back to any consent given earlier.
-    try {
-      const info = await AdsConsent.getConsentInfo();
-      canRequestAds = info.canRequestAds;
-    } catch {
-      canRequestAds = false;
-    }
-  }
-  if (!canRequestAds) return;
-  try {
-    await mobileAds().initialize();
-    loadInterstitial();
-    loadRewarded();
+    await LevelPlayPrivacySettings.setGDPRConsent(consent === 'granted');
   } catch {}
 }
 
-/** Shows an interstitial if one is ready. Always resolves, so the game never gets stuck. */
-export function showInterstitial(): Promise<void> {
-  return new Promise(resolve => {
-    if (!interstitial || !interstitialReady) { resolve(); return; }
-    const ad = interstitial;
-    interstitialReady = false;
-    let done = false;
-    const finish = () => { if (done) return; done = true; resolve(); loadInterstitial(); };
-    ad.addAdEventListener(AdEventType.CLOSED, finish);
-    ad.addAdEventListener(AdEventType.ERROR, finish);
-    ad.show().catch(finish);
+// No interstitial in a player's first 3 games. After that GameContext's own
+// 3 minute cooldown applies.
+const GAMES_KEY = 'griddl_ad_games_started_v1';
+const FREE_GAMES = 3;
+
+export async function interstitialAllowed(): Promise<boolean> {
+  let n = 0;
+  try {
+    n = parseInt((await AsyncStorage.getItem(GAMES_KEY)) || '0', 10) || 0;
+  } catch {}
+  n += 1;
+  try {
+    await AsyncStorage.setItem(GAMES_KEY, String(n));
+  } catch {}
+  return n > FREE_GAMES;
+}
+
+const interstitial = new LevelPlayInterstitialAd(INTERSTITIAL_ID);
+const rewarded = new LevelPlayRewardedAd(REWARDED_ID);
+
+let interstitialDone: (() => void) | null = null;
+let rewardedDone: ((earned: boolean) => void) | null = null;
+let rewardEarned = false;
+
+interstitial.setListener({
+  onAdLoaded: () => {},
+  onAdLoadFailed: () => {},
+  onAdInfoChanged: () => {},
+  onAdDisplayed: () => {},
+  onAdDisplayFailed: () => interstitialDone?.(),
+  onAdClicked: () => {},
+  onAdClosed: () => {
+    interstitialDone?.();
+    interstitial.loadAd().catch(() => {});
+  },
+});
+
+rewarded.setListener({
+  onAdLoaded: () => {},
+  onAdLoadFailed: () => {},
+  onAdInfoChanged: () => {},
+  onAdDisplayed: () => {},
+  onAdDisplayFailed: () => rewardedDone?.(false),
+  onAdClicked: () => {},
+  onAdRewarded: () => {
+    rewardEarned = true;
+  },
+  onAdClosed: () => {
+    rewardedDone?.(rewardEarned);
+    rewarded.loadAd().catch(() => {});
+  },
+});
+
+// Resolves when the ad has closed, or straight away if none is ready.
+export async function showInterstitial(): Promise<void> {
+  try {
+    await initAds();
+    if (!(await interstitial.isAdReady())) {
+      interstitial.loadAd().catch(() => {});
+      return;
+    }
+  } catch {
+    return;
+  }
+  await new Promise<void>(resolve => {
+    const timeout = setTimeout(done, 60_000);
+    function done() {
+      clearTimeout(timeout);
+      interstitialDone = null;
+      resolve();
+    }
+    interstitialDone = done;
+    interstitial.showAd().catch(done);
   });
 }
 
-export function isRewardedReady(): boolean {
-  return rewardedReady;
-}
-
-/** Shows a rewarded ad. Resolves true only if the player watched it to the end. */
-export function showRewarded(): Promise<boolean> {
+// 'earned' only if the player watched to the end. 'unavailable' if no ad
+// could be shown: no reward is given in that case.
+export async function showRewarded(): Promise<'earned' | 'skipped' | 'unavailable'> {
+  try {
+    await initAds();
+    if (!(await rewarded.isAdReady())) {
+      rewarded.loadAd().catch(() => {});
+      return 'unavailable';
+    }
+  } catch {
+    return 'unavailable';
+  }
+  rewardEarned = false;
   return new Promise(resolve => {
-    if (!rewarded || !rewardedReady) { resolve(false); return; }
-    const ad = rewarded;
-    rewardedReady = false;
-    let earned = false;
-    let done = false;
-    const finish = () => { if (done) return; done = true; resolve(earned); loadRewarded(); };
-    ad.addAdEventListener(RewardedAdEventType.EARNED_REWARD, () => { earned = true; });
-    ad.addAdEventListener(AdEventType.CLOSED, finish);
-    ad.addAdEventListener(AdEventType.ERROR, finish);
-    ad.show().catch(finish);
+    const timeout = setTimeout(() => done(false), 120_000);
+    function done(earned: boolean) {
+      clearTimeout(timeout);
+      rewardedDone = null;
+      resolve(earned ? 'earned' : 'skipped');
+    }
+    rewardedDone = done;
+    rewarded.showAd().catch(() => done(false));
   });
-}
-
-export function hasPrivacyOptions(): boolean {
-  return privacyOptionsRequired;
-}
-
-export async function openPrivacyOptions(): Promise<void> {
-  try { await AdsConsent.showPrivacyOptionsForm(); } catch {}
 }

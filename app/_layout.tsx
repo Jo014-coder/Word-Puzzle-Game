@@ -11,7 +11,6 @@ import { queryClient } from "@/lib/query-client";
 import { GameProvider, useGame } from "@/contexts/GameContext";
 import { BACKGROUNDS } from "@/constants/backgrounds";
 import AdOverlay from "@/components/AdOverlay";
-import { initAds } from "@/lib/ads";
 import { ThemeProvider, DarkTheme } from "@react-navigation/native";
 
 // Transparent navigation theme so the chosen game background always shows through.
@@ -92,11 +91,6 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
   });
-
-  useEffect(() => {
-    // Ask for ad consent and preload ads in the background. The game never waits for this.
-    initAds();
-  }, []);
 
   useEffect(() => {
     if (fontsLoaded || fontError) {

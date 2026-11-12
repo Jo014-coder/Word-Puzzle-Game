@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { ADS_ARE_PREVIEW, showInterstitial, showRewarded } from '@/lib/ads';
+import { interstitialAllowed, showInterstitial, showRewarded } from '@/lib/ads';
 
 interface AdOverlayProps {
   type: 'interstitial' | 'rewarded';
@@ -8,32 +8,49 @@ interface AdOverlayProps {
   onDismiss?: () => void;
 }
 
-// Shows a real ad on phones (if one is loaded) and a labelled placeholder in the browser preview.
-// If no ad is ready, the game continues straight away and no reward is given.
+// Shows a real Unity LevelPlay ad. There is no simulated fallback: if no ad
+// is available the player simply carries on, and a reward is only given
+// when a rewarded ad was actually watched to the end.
 export default function AdOverlay({ type, onComplete, onDismiss }: AdOverlayProps) {
   const calledRef = useRef(false);
+  const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    const done = (ok: boolean) => {
-      if (calledRef.current) return;
+    let alive = true;
+    const finish = (rewarded: boolean) => {
+      if (!alive || calledRef.current) return;
       calledRef.current = true;
-      if (ok) onComplete(); else (onDismiss || onComplete)();
+      if (rewarded) onComplete();
+      else (onDismiss || onComplete)();
     };
-    if (type === 'interstitial') {
-      showInterstitial().then(() => done(true));
-    } else {
-      showRewarded().then(earned => done(earned));
-    }
+
+    (async () => {
+      if (type === 'interstitial') {
+        if (await interstitialAllowed()) await showInterstitial();
+        finish(true);
+        return;
+      }
+      const result = await showRewarded();
+      if (result === 'earned') {
+        finish(true);
+      } else if (result === 'unavailable') {
+        if (alive) setMessage('No ad available right now. Please try again later.');
+        setTimeout(() => finish(false), 2000);
+      } else {
+        finish(false);
+      }
+    })().catch(() => finish(type === 'interstitial'));
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
-  if (!ADS_ARE_PREVIEW) return null;
-
+  if (!message) return null;
   return (
-    <View style={styles.overlay}>
+    <View style={styles.overlay} pointerEvents="none">
       <View style={styles.box}>
-        <Text style={styles.label}>PREVIEW ONLY</Text>
-        <Text style={styles.title}>{type === 'interstitial' ? 'An ad would play here' : 'A rewarded ad would play here'}</Text>
-        <Text style={styles.sub}>Real ads only appear in the phone app.</Text>
+        <Text style={styles.text}>{message}</Text>
       </View>
     </View>
   );
@@ -42,22 +59,22 @@ export default function AdOverlay({ type, onComplete, onDismiss }: AdOverlayProp
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.85)',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 9999,
   },
   box: {
-    width: '80%',
-    maxWidth: 360,
     backgroundColor: '#1a1a2e',
-    borderRadius: 16,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#333',
-    padding: 28,
-    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    maxWidth: '80%',
   },
-  label: { fontSize: 10, letterSpacing: 3, color: '#888', marginBottom: 12 },
-  title: { fontSize: 18, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 },
-  sub: { fontSize: 13, color: '#aaa', textAlign: 'center' },
+  text: {
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center',
+  },
 });

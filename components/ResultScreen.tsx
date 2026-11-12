@@ -16,7 +16,6 @@ import { DIFFICULTY_CONFIG } from '@/constants/game';
 import ColorPeg from './ColorPeg';
 import Confetti from './Confetti';
 import Toast from './Toast';
-import { isRewardedReady } from '@/lib/ads';
 import { FeedbackPin } from './FeedbackPins';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -251,7 +250,7 @@ export default function ResultScreen() {
             </Pressable>
           )}
 
-          {!rewardedAdWatched && isRewardedReady() && (
+          {!rewardedAdWatched && (
             <Pressable
               onPress={requestRewardedAd}
               style={({ pressed }) => [styles.rewardedAdButton, { opacity: pressed ? 0.8 : 1 }]}
