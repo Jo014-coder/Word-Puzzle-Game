@@ -22,6 +22,7 @@ import HowToPlayModal from './HowToPlayModal';
 import SettingsModal from './SettingsModal';
 import ColorPeg from './ColorPeg';
 import { LinearGradient } from 'expo-linear-gradient';
+import { maybeAskForRating, openYoink } from '@/lib/growth';
 
 const LOGO = ['G', 'R', 'I', 'D', 'D', 'L'];
 
@@ -235,6 +236,11 @@ export default function HomeScreen() {
   const nextIn = useTimeToMidnight();
 
   useEffect(() => {
+    const t = setTimeout(() => { maybeAskForRating(gamesWon); }, 1200);
+    return () => clearTimeout(t);
+  }, [gamesWon]);
+
+  useEffect(() => {
     AsyncStorage.getItem('hasSeenTutorial').then(val => {
       if (!val) setShowHelp(true);
     }).catch(() => {});
@@ -387,6 +393,18 @@ export default function HomeScreen() {
           <Text style={[styles.bottomButtonText, { color: Colors.textSecondary }]}>How to play</Text>
         </Pressable>
       </View>
+
+      <Pressable onPress={openYoink} style={styles.promoCard} accessibilityRole="button" accessibilityLabel="Get YOINK, our other game, on Google Play">
+        <View style={styles.promoIcon}>
+          <MaterialCommunityIcons name="vector-polygon" size={22} color={Colors.accentGlow} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.promoLabel}>MORE FROM JAG ATELIERS</Text>
+          <Text style={styles.promoTitle}>YOINK: draw lines, close shapes</Text>
+          <Text style={styles.promoSub}>Free strategy game for 1 to 4 players</Text>
+        </View>
+        <Feather name="external-link" size={18} color={Colors.textSecondary} />
+      </Pressable>
 
       {gamesPlayed > 0 && (
         <Text style={styles.miniStatText}>
@@ -738,5 +756,42 @@ const styles = StyleSheet.create({
   bottomButtonText: {
     fontSize: 13,
     fontFamily: 'Inter_600SemiBold',
+  },
+  promoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginTop: 14,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: 'rgba(30,41,55,0.6)',
+    borderWidth: 1,
+    borderColor: 'rgba(148,163,184,0.15)',
+  },
+  promoIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(124,92,231,0.15)',
+  },
+  promoLabel: {
+    fontSize: 10,
+    letterSpacing: 1.5,
+    fontFamily: 'Inter_600SemiBold',
+    color: Colors.textSecondary,
+  },
+  promoTitle: {
+    fontSize: 15,
+    fontFamily: 'Inter_600SemiBold',
+    color: Colors.textPrimary,
+    marginTop: 2,
+  },
+  promoSub: {
+    fontSize: 12,
+    fontFamily: 'Inter_400Regular',
+    color: Colors.textSecondary,
+    marginTop: 1,
   },
 });
