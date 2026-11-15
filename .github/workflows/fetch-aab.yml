@@ -1,0 +1,13 @@
+name: fetch-aab
+on:
+  push:
+    branches: [tmp-fetch-aab]
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sSL -o griddl-1.0.4.aab "https://expo.dev/artifacts/eas/urph2Cm3J9DmRI0VI3TtuiwD4KXzTY4s0begtwgqC50.aab" && ls -l && unzip -l griddl-1.0.4.aab | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: griddl-aab
+          path: griddl-1.0.4.aab
